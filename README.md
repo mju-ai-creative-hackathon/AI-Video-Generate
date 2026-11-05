@@ -4,6 +4,8 @@
 
 일정 시작·종료, 이동 경로·걸음수, 나의 일기장 API: [diary-api.md](docs/diary-api.md)
 
+진행 중인 코스의 완료 장소를 유지하고 남은 일정 수정: [COURSE_REFINEMENT_API.md](docs/COURSE_REFINEMENT_API.md)
+
 숏폼 제작 중계 API 및 AI 연동 가안: [SHORTFORM_API.md](docs/SHORTFORM_API.md)
 
 Java 21, Spring Boot, Gradle, PostgreSQL로 구성된 백엔드 프로젝트입니다.
@@ -250,6 +252,7 @@ Authorization: Bearer <accessToken>
 | GET | `/api/courses/{id}?lat=&lng=` | 코스 상세: `stops`, `legs`(구간 거리·시간·`naverMapUrl`·`googleMapsUrl`), `startLeg`(현재 위치→1번), `missions` |
 | POST | `/api/courses/recommendations` | `{prompt, lat?, lng?}` → AI 맞춤 코스 최대 3개(상세 형식). 로그인 필요, 10~30초 소요, 하루 20회 |
 | POST | `/api/courses/{id}/refinements` | `{prompt, lat?, lng?}` → 기존 코스(기본/내 AI 코스)를 프롬프트대로 고친 **새 AI 코스 1개**(상세 형식). 원본 유지. 로그인 필요 |
+| POST | `/api/courses/{id}/remaining-refinements` | `{prompt, completedThroughStopSeq, lat?, lng?}` → 완료 장소·미션을 보존하고 이후 일정만 수정한 새 코스. 로그인 필요 |
 | PUT/DELETE | `/api/courses/{id}/save` | 코스 저장/해제 (로그인) |
 | GET | `/api/courses/saved` | 저장한 코스 (로그인) |
 

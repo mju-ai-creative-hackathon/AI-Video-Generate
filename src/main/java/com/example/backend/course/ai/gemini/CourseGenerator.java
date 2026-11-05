@@ -26,4 +26,10 @@ public interface CourseGenerator {
      * @throws CourseGenerationException 설정 누락, 업스트림 실패, 타임아웃, 유효하지 않은 출력
      */
     AiCourseDraft refine(String baseCourseJson, String prompt, Double userLat, Double userLng);
+
+    /** 완료한 장소는 문맥으로만 제공하고 아직 진행하지 않은 일정만 생성한다. */
+    default AiCourseDraft refineRemaining(String baseCourseJson, String prompt, int completedThroughStopSeq,
+                                         Double userLat, Double userLng) {
+        return refine(baseCourseJson, prompt, userLat, userLng);
+    }
 }
