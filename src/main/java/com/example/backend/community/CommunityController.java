@@ -28,9 +28,9 @@ public class CommunityController {
             @RequestParam(defaultValue = "15") int limit) { return service.tags(authorization, limit); }
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostView> create(@RequestHeader(value = "Authorization", required = false) String authorization,
-            @Valid @RequestPart("post") CreateRequest request, @RequestPart("files") List<MultipartFile> files,
-            @RequestPart(value = "cover", required = false) MultipartFile cover) {
-        var post = service.create(authorization, request, files, cover);
+            @Valid @RequestPart("post") CreateRequest request, @RequestPart("video") MultipartFile video,
+            @RequestPart("cover") MultipartFile cover) {
+        var post = service.create(authorization, request, video, cover);
         return ResponseEntity.created(URI.create("/api/community/posts/" + post.id())).body(post);
     }
     @GetMapping("/{id}") public PostView get(@PathVariable UUID id) { return service.get(id); }

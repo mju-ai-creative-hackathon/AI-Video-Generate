@@ -1,6 +1,6 @@
 # 커뮤니티 탐색 API
 
-사진·영상 게시물을 등록하고, 검색창과 해시태그 칩으로 검색하거나 랜덤 탐색 목록을 조회합니다.
+숏폼 영상 게시물을 등록하고, 검색창과 해시태그 칩으로 검색하거나 랜덤 탐색 목록을 조회합니다.
 이 저장소는 백엔드이므로 이미지의 그리드 화면은 프론트에서 응답의 `thumbnailUrl`로 구성합니다.
 
 기본 경로: `/api/community/posts`
@@ -17,7 +17,8 @@
 ## 게시물 등록
 
 등록·삭제에는 기존 로그인에서 받은 `Authorization: Bearer <accessToken>`이 필요합니다.
-`multipart/form-data`의 `post` 파트에 JSON 메타데이터, 반복되는 `files` 파트에 사진·영상을 전달합니다.
+`multipart/form-data`의 `post` 파트에 JSON 메타데이터, `video` 파트에 숏폼 영상,
+`cover` 파트에 피드 썸네일용 이미지를 전달합니다.
 
 ```json
 {"title":"한강에서 보낸 하루","caption":"함께 걷고 촬영한 서울","tags":["#커플여행","서울"]}
@@ -27,17 +28,17 @@
 curl -X POST http://localhost:8080/api/community/posts \
   -H 'Authorization: Bearer ACCESS_TOKEN' \
   -F 'post={"title":"한강에서 보낸 하루","caption":"서울 산책","tags":["서울"]};type=application/json' \
-  -F 'files=@photo.png'
+  -F 'video=@shortform.mp4' \
+  -F 'cover=@cover.png'
 ```
 
 제목 최대 100자, 본문 최대 3000자, 태그 최대 10개이며 태그당 최대 30자입니다.
 태그는 앞의 `#` 제거, 소문자·Unicode 정규화 후 저장합니다. 문자·숫자·밑줄만 허용합니다.
-게시물당 소스는 1~10개이며 사진 JPEG/PNG/WebP, 영상 MP4/MOV/WebM을 지원합니다.
-사진 최대 10MiB, 영상 최대 100MiB, 업로드 요청 전체 최대 500MB입니다.
+게시물당 영상은 1개이며 MP4/MOV/WebM을 지원합니다. 일반 이미지 게시물과 복수 미디어는 지원하지 않습니다.
+커버는 JPEG/PNG/WebP만 지원하며 최대 10MiB, 영상은 최대 100MiB입니다.
 선언 MIME과 파일 시그니처를 검사하며 영상 코덱·길이·화질을 검증하거나 변환하지는 않습니다.
 
-첫 번째 미디어가 영상이면 `cover` 파트에 대표 사진을 반드시 첨부합니다.
-그리드용 `thumbnailUrl`은 사진 또는 커버를 가리킵니다. 커버는 본문의 `media` 배열에는 포함되지 않습니다.
+`cover`는 필수이며 그리드용 `thumbnailUrl`이 가리킵니다. 커버는 본문의 `media` 배열에는 포함되지 않습니다.
 
 201 응답에는 `id`, `title`, `caption`, `author`, `tags`, `thumbnailUrl`, `media`, `createdAt`이 포함됩니다.
 `author`는 공개 프로필인 `id`, `name`, `profileImageUrl`만 제공하며 이메일은 노출하지 않습니다.

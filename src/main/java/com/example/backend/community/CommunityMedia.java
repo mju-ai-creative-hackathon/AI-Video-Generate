@@ -31,7 +31,7 @@ public class CommunityMedia {
     @Column(nullable = false, length = 10)
     MediaKind kind;
 
-    // -1 is reserved for a separate photo cover of a video-first post.
+    // -1 is reserved for the video's cover image; 0 is the short-form video.
     @Column(nullable = false)
     int position;
 
