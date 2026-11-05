@@ -51,7 +51,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
     private static final Pattern HH_MM = Pattern.compile("([01]\\d|2[0-3]):[0-5]\\d");
     private static final Pattern MODEL_ID = Pattern.compile("[A-Za-z0-9._-]{1,100}");
 
-    static final String DEFAULT_MODEL = "gemini-3.6-flash";
+    static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
     static final String NOT_CONFIGURED = "AI 추천이 아직 설정되지 않았습니다.";
     private static final String UNAVAILABLE = "AI 추천 서비스에 일시적으로 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
     private static final String REJECTED = "AI 추천 요청이 거절되었습니다.";
@@ -63,7 +63,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
 
             규칙:
             1. Google 검색으로 확인한, 지금 실제로 운영 중인 서울의 장소만 사용한다. 폐업·휴업·장기 공사 중이거나 존재가 불확실한 곳은 넣지 않는다.
-            2. 코스는 서로 다른 분위기·동선으로 반드시 3개를 제안한다(조건상 불가능할 때만 그보다 적게). 각 코스는 장소 3~5곳을 도보 또는 대중교통으로 효율적으로 이동하는 방문 순서대로 나열한다.
+            2. 코스 개수는 사용자 메시지의 지시를 따른다(지시가 없으면 서로 다른 분위기·동선으로 3개). 각 코스는 장소 3~5곳을 도보 또는 대중교통으로 효율적으로 이동하는 방문 순서대로 나열한다.
             3. 사용자 위치(위도/경도)가 주어지면 그 근처에서 시작한다. 요청한 소요 시간·예산·분위기·날씨·동행을 반드시 지킨다. 비 오는 날이면 실내 위주로 짠다.
             4. title 은 15자 안팎의 짧고 감성적인 한국어 제목이다. 예: "참 좋은 날 고궁 나들이".
             5. summary 는 코스 전체를 1~2문장으로 소개한다. region 은 대표 지역명(예: "종로", "성수")이다.
@@ -90,14 +90,26 @@ public class GeminiCourseGenerator implements CourseGenerator {
     private final Duration timeout;
     private final ObjectMapper mapper;
     private final HttpClient client;
+    private final int parallelCalls;
+    private final String thinkingLevel;
 
+    /** 테스트용: 한 번의 호출로 코스를 모두 받는다. */
+    public GeminiCourseGenerator(String apiKey, String model, String baseUrl, int timeoutSeconds, ObjectMapper mapper) {
+        this(apiKey, model, baseUrl, timeoutSeconds, 1, "", mapper);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public GeminiCourseGenerator(
             @Value("${app.gemini.api-key:${GEMINI_API_KEY:}}") String apiKey,
-            @Value("${app.gemini.model:${GEMINI_MODEL:gemini-3.6-flash}}") String model,
+            @Value("${app.gemini.model:${GEMINI_MODEL:gemini-3.5-flash-lite}}") String model,
             @Value("${app.gemini.base-url:https://generativelanguage.googleapis.com}") String baseUrl,
-            @Value("${app.gemini.timeout-seconds:45}") int timeoutSeconds,
+            @Value("${app.gemini.timeout-seconds:30}") int timeoutSeconds,
+            @Value("${app.gemini.parallel-calls:3}") int parallelCalls,
+            @Value("${app.gemini.thinking-level:low}") String thinkingLevel,
             ObjectMapper mapper
     ) {
+        this.parallelCalls = Math.max(1, Math.min(parallelCalls, 3));
+        this.thinkingLevel = thinkingLevel == null ? "" : thinkingLevel.strip();
         this.apiKey = apiKey == null ? "" : apiKey.strip();
         this.model = model == null || model.isBlank() ? DEFAULT_MODEL : model.strip();
         this.baseUri = URI.create(baseUrl.strip().replaceAll("/+$", ""));
@@ -127,7 +139,44 @@ public class GeminiCourseGenerator implements CourseGenerator {
         if (request.isEmpty()) throw new CourseGenerationException("어떤 코스를 원하는지 입력해 주세요.");
         if (request.length() > MAX_PROMPT_CHARS) request = request.substring(0, MAX_PROMPT_CHARS);
         String userMessage = userMessage(request, userLat, userLng);
+        if (parallelCalls <= 1) return generateOnce(userMessage);
 
+        // 지연을 줄이려고 코스를 1개씩 동시에 요청하고, 관점을 달리해 서로 겹치지 않게 한다.
+        List<CompletableFuture<List<AiCourseDraft>>> futures = new ArrayList<>();
+        for (int i = 0; i < parallelCalls; i++) {
+            String variant = userMessage + "\n\n이번 응답에는 코스를 정확히 1개만 낸다. 코스 성격: " + ANGLES.get(i);
+            futures.add(CompletableFuture.supplyAsync(() -> generateOnce(variant), PARALLEL));
+        }
+        List<AiCourseDraft> merged = new ArrayList<>();
+        java.util.Set<String> seenTitles = new java.util.HashSet<>();
+        java.util.Set<String> seenFirstStops = new java.util.HashSet<>();
+        CourseGenerationException firstError = null;
+        for (CompletableFuture<List<AiCourseDraft>> f : futures) {
+            try {
+                for (AiCourseDraft c : f.join()) {
+                    String firstStop = c.stops().isEmpty() ? "" : c.stops().getFirst().name();
+                    if (seenTitles.add(c.title()) && seenFirstStops.add(firstStop)) merged.add(c);
+                    if (merged.size() >= MAX_COURSES) break;
+                }
+            } catch (java.util.concurrent.CompletionException e) {
+                if (firstError == null) {
+                    firstError = e.getCause() instanceof CourseGenerationException cge
+                            ? cge : new CourseGenerationException(UNAVAILABLE, e.getCause());
+                }
+            }
+        }
+        if (merged.isEmpty()) throw firstError != null ? firstError : new CourseGenerationException(INVALID);
+        return merged;
+    }
+
+    private static final List<String> ANGLES = List.of(
+            "요청에 가장 충실한 대표 명소 중심 코스",
+            "현지인이 가는 숨은 장소 중심 코스(첫 장소와 동선을 다른 코스와 다르게)",
+            "분위기를 바꾼 색다른 대안 코스(실내/야외·시간대 등을 다르게)");
+    private static final java.util.concurrent.ExecutorService PARALLEL =
+            java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+
+    private List<AiCourseDraft> generateOnce(String userMessage) {
         boolean structured = true;
         for (int attempt = 1; ; attempt++) {
             boolean last = attempt >= 2;
@@ -177,6 +226,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
         body.put("systemInstruction", Map.of("parts", List.of(Map.of("text", system))));
         body.put("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", userMessage)))));
         body.put("tools", List.of(Map.of("google_search", Map.of())));
+        if (!thinkingLevel.isEmpty()) generationConfig.put("thinkingConfig", Map.of("thinkingLevel", thinkingLevel));
         if (!generationConfig.isEmpty()) body.put("generationConfig", generationConfig);
 
         byte[] payload;
