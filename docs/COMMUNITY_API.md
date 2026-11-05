@@ -1,5 +1,7 @@
 # 커뮤니티 탐색 API
 
+게시물별 댓글 API는 [COMMUNITY_COMMENTS_API.md](COMMUNITY_COMMENTS_API.md)를 참고하세요.
+
 숏폼 영상 게시물을 등록하고, 검색창과 해시태그 칩으로 검색하거나 랜덤 탐색 목록을 조회합니다.
 이 저장소는 백엔드이므로 이미지의 그리드 화면은 프론트에서 응답의 `thumbnailUrl`로 구성합니다.
 
@@ -11,6 +13,7 @@
 | GET | `/explore` | 검색·태그 필터를 적용한 랜덤 탐색 |
 | GET | `/tags` | 공개 게시물에서 집계한 인기 해시태그 |
 | GET | `/{id}` | 게시물 상세 |
+| POST | `/{id}/import` | 게시물 코스를 내 일정으로 가져와 바로 시작 |
 | GET | `/{id}/media/{mediaId}` | 공개된 게시물의 원본 미디어 |
 | DELETE | `/{id}` | 작성자 본인 게시물 삭제 |
 
@@ -21,18 +24,20 @@
 `cover` 파트에 피드 썸네일용 이미지를 전달합니다.
 
 ```json
-{"title":"한강에서 보낸 하루","caption":"함께 걷고 촬영한 서울","tags":["#커플여행","서울"]}
+{"title":"한강에서 보낸 하루","caption":"함께 걷고 촬영한 서울","tags":["#커플여행","서울"],"courseId":1}
 ```
 
 ```bash
 curl -X POST http://localhost:8080/api/community/posts \
   -H 'Authorization: Bearer ACCESS_TOKEN' \
-  -F 'post={"title":"한강에서 보낸 하루","caption":"서울 산책","tags":["서울"]};type=application/json' \
+  -F 'post={"title":"한강에서 보낸 하루","caption":"서울 산책","tags":["서울"],"courseId":1};type=application/json' \
   -F 'video=@shortform.mp4' \
   -F 'cover=@cover.png'
 ```
 
 제목 최대 100자, 본문 최대 3000자, 태그 최대 10개이며 태그당 최대 30자입니다.
+`courseId`는 선택 사항입니다. 프리셋 코스 또는 본인 소유 코스만 연결할 수 있으며, 연결하면
+게시물 응답의 `course`에 코스 ID와 게시 당시 제목이 포함됩니다.
 태그는 앞의 `#` 제거, 소문자·Unicode 정규화 후 저장합니다. 문자·숫자·밑줄만 허용합니다.
 게시물당 영상은 1개이며 MP4/MOV/WebM을 지원합니다. 일반 이미지 게시물과 복수 미디어는 지원하지 않습니다.
 커버는 JPEG/PNG/WebP만 지원하며 최대 10MiB, 영상은 최대 100MiB입니다.
@@ -44,6 +49,24 @@ curl -X POST http://localhost:8080/api/community/posts \
 `author`는 공개 프로필인 `id`, `name`, `profileImageUrl`만 제공하며 이메일은 노출하지 않습니다.
 각 `media`는 `id`, `kind`, `contentType`, `sizeBytes`, `url`을 포함합니다.
 미디어 URL은 이 백엔드의 상대 경로이므로 프론트의 API 기본 주소를 붙여 사용합니다.
+
+## 커뮤니티 코스를 내 일정으로 시작
+
+코스가 연결된 다른 사용자의 게시물에서 다음 API를 호출합니다.
+
+```http
+POST /api/community/posts/{postId}/import
+Authorization: Bearer ACCESS_TOKEN
+```
+
+서버는 게시물의 코스를 요청자 소유의 `IMPORTED` 코스로 복제하고, 복제된 코스로 여행 기록을
+즉시 시작합니다. 장소의 일차·순서·좌표·이미지, 출발지, 촬영 미션을 모두 복사하므로 이후
+원본 코스가 변경되거나 삭제되어도 가져온 일정에는 영향을 주지 않습니다.
+
+201 응답의 `courseId`는 복제된 코스 ID이고 `diary`는 `/api/diaries`의 진행 중 기록과 같은 형식입니다.
+`Location` 헤더는 생성된 `/api/diaries/{diaryId}`를 가리킵니다. 진행 중인 일정이 이미 있으면 409,
+로그인이 없으면 401, 게시물 또는 연결 코스가 없으면 404를 반환합니다. 실패한 요청에서 생성한
+복제 코스는 트랜잭션과 함께 롤백됩니다.
 
 ## 검색과 랜덤 탐색
 

@@ -277,13 +277,42 @@ public class GeminiCourseGenerator implements CourseGenerator {
         return generateOnce(message).getFirst();
     }
 
+    @Override
+    public AiCourseDraft refineRemaining(String baseCourseJson, String prompt, int completedThroughStopSeq,
+                                        Double userLat, Double userLng) {
+        if (apiKey.isEmpty() || apiKey.contains("\r") || apiKey.contains("\n")
+                || !MODEL_ID.matcher(model).matches()) {
+            throw new CourseGenerationException(NOT_CONFIGURED);
+        }
+        String request = prompt == null ? "" : prompt.strip();
+        if (request.isEmpty()) throw new CourseGenerationException("남은 일정을 어떻게 바꿀지 입력해 주세요.");
+        if (request.length() > MAX_PROMPT_CHARS) request = request.substring(0, MAX_PROMPT_CHARS);
+        String base = baseCourseJson.replace("<", "‹").replace(">", "›");
+        String message = userMessage(request, userLat, userLng, null)
+                + "\n\n<base_course>\n" + base + "\n</base_course>\n\n"
+                + "이번 요청은 진행 중인 여행의 남은 일정 수정이다. 원본 seq " + completedThroughStopSeq
+                + "번까지는 이미 완료했으며, 0이면 아직 완료한 장소가 없다. "
+                + "완료한 장소와 촬영 미션은 서버에서 그대로 보존하므로 출력 stops/missions에 절대 포함하지 않는다. "
+                + "제공된 위치 또는 마지막 완료 장소에서 이어지는 앞으로 방문할 장소만 정확히 1개 코스로 출력한다. "
+                + "남은 장소는 사용자 요청에 따라 1개부터 가능하다. 기존 기본 장소 수 규칙보다 이 규칙을 우선한다. "
+                + "seq는 남은 장소만 1부터 매기고, missions.stopSeq도 그 번호에 연결한다. "
+                + "day는 원본 여행의 실제 일차를 유지하고 시작 시각은 마지막 완료 장소 체류 이후로 정한다. "
+                + "totalMinutes와 estimatedCost는 남은 일정만의 예상값이다. "
+                + "사용자 요청으로도 이미 완료한 장소·시간·미션을 다시 생성하거나 수정하지 않는다.";
+        return generateOnce(message, 1).getFirst();
+    }
+
     private List<AiCourseDraft> generateOnce(String userMessage) {
+        return generateOnce(userMessage, MIN_STOPS);
+    }
+
+    private List<AiCourseDraft> generateOnce(String userMessage, int minimumStops) {
         boolean structured = true;
         for (int attempt = 1; ; attempt++) {
             boolean last = attempt >= 2;
             String text;
             try {
-                text = call(userMessage, structured);
+                text = call(userMessage, structured, minimumStops);
             } catch (SchemaRejected e) {
                 // 모델이 tools + responseJsonSchema 조합을 지원하지 않으면 프롬프트 JSON 방식으로 한 번 더 시도한다.
                 if (last || !structured) throw new CourseGenerationException(REJECTED);
@@ -291,7 +320,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
                 structured = false;
                 continue;
             }
-            List<AiCourseDraft> courses = parseCourses(text);
+            List<AiCourseDraft> courses = parseCourses(text, minimumStops);
             if (!courses.isEmpty()) return courses;
             if (last) throw new CourseGenerationException(INVALID);
             log.warn("Gemini returned no valid course JSON; retrying once");
@@ -319,14 +348,18 @@ public class GeminiCourseGenerator implements CourseGenerator {
 
     // ---------------------------------------------------------------- HTTP
 
-    private String call(String userMessage, boolean structured) {
+    private String call(String userMessage, boolean structured, int minimumStops) {
         Map<String, Object> generationConfig = new LinkedHashMap<>();
         String system = SYSTEM_INSTRUCTION;
         if (structured) {
             generationConfig.put("responseMimeType", "application/json");
-            generationConfig.put("responseJsonSchema", responseSchema());
+            generationConfig.put("responseJsonSchema", responseSchema(minimumStops == 1 ? 1 : 4));
         } else {
             system = SYSTEM_INSTRUCTION + JSON_FORMAT_HINT;
+        }
+        if (minimumStops == 1) {
+            system += "\n이 요청은 완료된 일정을 제외한 남은 일정만 생성한다. 장소 1개도 허용하며, "
+                    + "완료 장소의 재출력·수정 금지와 남은 일정의 장소 수 지시는 기본 장소 수 규칙보다 우선한다.";
         }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("systemInstruction", Map.of("parts", List.of(Map.of("text", system))));
@@ -422,7 +455,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
         return sb.toString();
     }
 
-    private static Map<String, Object> responseSchema() {
+    private static Map<String, Object> responseSchema(int minimumStops) {
         Map<String, Object> str = Map.of("type", "string");
         Map<String, Object> nullableStr = Map.of("type", List.of("string", "null"));
         Map<String, Object> integer = Map.of("type", "integer");
@@ -454,7 +487,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
         courseProps.put("region", nullableStr);
         courseProps.put("totalMinutes", integer);
         courseProps.put("estimatedCost", nullableInt);
-        courseProps.put("stops", Map.of("type", "array", "items", stop, "minItems", 4, "maxItems", MAX_STOPS));
+        courseProps.put("stops", Map.of("type", "array", "items", stop, "minItems", minimumStops, "maxItems", MAX_STOPS));
         // maxItems 를 크게 주면 Gemini 가 스키마를 INVALID_ARGUMENT 로 거부하므로 개수는 파싱 단계에서 자른다.
         courseProps.put("missions", Map.of("type", "array", "items", mission, "minItems", 2));
         Map<String, Object> course = Map.of("type", "object", "properties", courseProps,
@@ -470,6 +503,10 @@ public class GeminiCourseGenerator implements CourseGenerator {
 
     /** 모델 텍스트에서 코스를 파싱·정제한다. 유효한 코스가 없으면 빈 리스트. */
     List<AiCourseDraft> parseCourses(String text) {
+        return parseCourses(text, MIN_STOPS);
+    }
+
+    private List<AiCourseDraft> parseCourses(String text, int minimumStops) {
         JsonNode root = readJson(text);
         if (root == null) return List.of();
         JsonNode list = root.isArray() ? root : root.path("courses");
@@ -477,7 +514,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
         List<AiCourseDraft> result = new ArrayList<>();
         for (JsonNode node : list) {
             if (result.size() >= MAX_COURSES) break;
-            AiCourseDraft course = sanitizeCourse(node);
+            AiCourseDraft course = sanitizeCourse(node, minimumStops);
             if (course != null) result.add(course);
         }
         return List.copyOf(result);
@@ -503,7 +540,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
         }
     }
 
-    private static AiCourseDraft sanitizeCourse(JsonNode node) {
+    private static AiCourseDraft sanitizeCourse(JsonNode node, int minimumStops) {
         if (node == null || !node.isObject()) return null;
         String title = text(node.get("title"), MAX_TITLE);
         if (title == null) return null;
@@ -537,7 +574,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
                     day == null || day < 1 ? 1 : Math.min(day, MAX_DAYS)));
             seqMap.put(entry.getKey(), seq);
         }
-        if (stops.size() < MIN_STOPS) return null;
+        if (stops.size() < minimumStops) return null;
 
         List<AiMissionDraft> missions = new ArrayList<>();
         for (JsonNode m : node.path("missions")) {

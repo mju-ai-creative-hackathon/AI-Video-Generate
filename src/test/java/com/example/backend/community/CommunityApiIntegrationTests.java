@@ -3,6 +3,9 @@ package com.example.backend.community;
 import com.example.backend.PostgresIntegrationTest;
 import com.example.backend.auth.AuthService;
 import com.example.backend.auth.dto.SignupRequest;
+import com.example.backend.course.domain.Course;
+import com.example.backend.course.domain.CourseRepository;
+import com.example.backend.diary.domain.DiaryEntryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +27,8 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -39,6 +44,8 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired AuthService auth;
     @Autowired CommunityPostRepository posts;
+    @Autowired CourseRepository courses;
+    @Autowired DiaryEntryRepository diaries;
     @Autowired ObjectMapper mapper;
     private String owner;
     private String other;
@@ -48,6 +55,7 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
         registry.add("app.shortform.storage-root", STORAGE::toString);
     }
     @BeforeEach void setup() {
+        diaries.deleteAll();
         posts.deleteAll();
         owner = token("owner"); other = token("other");
     }
@@ -56,14 +64,27 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
     }
     private JsonNode json(String body) { return mapper.readTree(body); }
     private MockMultipartHttpServletRequestBuilder upload(String title, String caption, List<String> tags) {
+        return upload(title, caption, tags, null);
+    }
+    private MockMultipartHttpServletRequestBuilder upload(String title, String caption, List<String> tags, Long courseId) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("title", title);
+        metadata.put("caption", caption);
+        metadata.put("tags", tags);
+        if (courseId != null) metadata.put("courseId", courseId);
         return multipart(BASE).file(new MockMultipartFile("post", "", "application/json",
-                mapper.writeValueAsBytes(Map.of("title", title, "caption", caption, "tags", tags))));
+                mapper.writeValueAsBytes(metadata)));
     }
     private MockMultipartFile video() { return new MockMultipartFile("video", "clip.mp4", "video/mp4", MP4); }
     private MockMultipartFile cover() { return new MockMultipartFile("cover", "cover.png", "image/png", PNG); }
     private JsonNode create(String bearer, String title, String caption, String... tags) throws Exception {
         return json(mvc.perform(upload(title, caption, List.of(tags)).file(video()).file(cover())
                         .header("Authorization", bearer))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+    }
+    private JsonNode createWithCourse(String bearer, Long courseId, String title) throws Exception {
+        return json(mvc.perform(upload(title, "코스와 연결된 여행 기록", List.of("코스"), courseId)
+                        .file(video()).file(cover()).header("Authorization", bearer))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
     private JsonNode explore(String keyword, String tag) throws Exception {
@@ -86,6 +107,57 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
         mvc.perform(delete(BASE + "/" + id).header("Authorization", owner)).andExpect(status().isNoContent());
         mvc.perform(get(BASE + "/" + id)).andExpect(status().isNotFound());
         mvc.perform(get(post.get("thumbnailUrl").asText())).andExpect(status().isNotFound());
+    }
+
+    @Test void importsLinkedCourseAsPrivateSnapshotAndStartsDiary() throws Exception {
+        UUID ownerId = auth.getCurrentUser(owner).id();
+        UUID otherId = auth.getCurrentUser(other).id();
+        Course original = Course.ai(ownerId, "서울 야경", "원본 야경 코스", "한강을 따라 걷는 코스", "서울", 180, 25000);
+        original.setOrigin("서울역", "서울 용산구", 37.5547, 126.9706);
+        original.addStop(1, 1, "남산", "야경 감상", "서울 중구", 37.5512, 126.9882,
+                "https://example.test/namsan.jpg", "place-1", null, 60);
+        original.addStop(2, 2, "한강", "산책", "서울 영등포구", 37.5284, 126.9326,
+                "https://example.test/river.jpg", "place-2", null, 90);
+        original.addMission(1, com.example.backend.course.domain.MissionKind.PHOTO,
+                "야경 촬영", "도시 불빛을 촬영하세요.", 30);
+        courses.saveAndFlush(original);
+
+        JsonNode post = createWithCourse(owner, original.getId(), "서울 야경 여행 기록");
+        assertThat(post.path("course").path("id").asLong()).isEqualTo(original.getId());
+        assertThat(post.path("course").path("title").asText()).isEqualTo("원본 야경 코스");
+        mvc.perform(get("/api/courses/{id}", original.getId()).header("Authorization", other))
+                .andExpect(status().isNotFound());
+
+        JsonNode imported = json(mvc.perform(post(BASE + "/{id}/import", post.path("id").asText())
+                        .header("Authorization", other))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/diaries/")))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        long importedCourseId = imported.path("courseId").asLong();
+        assertThat(importedCourseId).isNotEqualTo(original.getId());
+        assertThat(imported.path("diary").path("courseId").asLong()).isEqualTo(importedCourseId);
+        assertThat(imported.path("diary").path("status").asText()).isEqualTo("RECORDING");
+
+        mvc.perform(get("/api/courses/{id}", importedCourseId).header("Authorization", other))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("IMPORTED"))
+                .andExpect(jsonPath("$.origin.name").value("서울역"))
+                .andExpect(jsonPath("$.stops.length()").value(2))
+                .andExpect(jsonPath("$.stops[1].day").value(2))
+                .andExpect(jsonPath("$.missions.length()").value(1));
+        assertThat(courses.findByOwnerId(otherId)).extracting(Course::getId).containsExactly(importedCourseId);
+
+        mvc.perform(post(BASE + "/{id}/import", post.path("id").asText()).header("Authorization", other))
+                .andExpect(status().isConflict());
+        assertThat(courses.findByOwnerId(otherId)).extracting(Course::getId).containsExactly(importedCourseId);
+    }
+
+    @Test void importRequiresAuthenticationAndLinkedCourse() throws Exception {
+        JsonNode post = create(owner, "코스 없는 기록", "가져올 코스 없음");
+        mvc.perform(post(BASE + "/{id}/import", post.path("id").asText()))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post(BASE + "/{id}/import", post.path("id").asText()).header("Authorization", other))
+                .andExpect(status().isNotFound());
     }
 
     @Test void searchesTitleCaptionAndTagsWithLiteralWildcards() throws Exception {

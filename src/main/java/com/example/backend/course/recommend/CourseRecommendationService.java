@@ -1,6 +1,8 @@
 package com.example.backend.course.recommend;
 
 import com.example.backend.auth.AuthService;
+import com.example.backend.auth.domain.UserRepository;
+import com.example.backend.auth.exception.AuthException;
 import com.example.backend.common.ApiException;
 import com.example.backend.course.CourseService;
 import com.example.backend.course.ai.gemini.AiCourseDraft;
@@ -63,10 +65,12 @@ public class CourseRecommendationService {
     private final TransactionTemplate tx;
     private final int dailyRequestLimit;
     private final ObjectMapper mapper;
+    private final UserRepository userRepository;
 
     public CourseRecommendationService(AuthService authService, CourseGenerator generator, PlaceLookup placeLookup,
                                        ImageLookup imageLookup, CourseRepository courseRepository,
                                        CourseService courseService, TransactionTemplate tx, ObjectMapper mapper,
+                                       UserRepository userRepository,
                                        @Value("${app.course.ai-daily-limit:${COURSE_AI_DAILY_LIMIT:20}}") int dailyRequestLimit) {
         this.authService = authService;
         this.generator = generator;
@@ -77,6 +81,7 @@ public class CourseRecommendationService {
         this.tx = tx;
         this.dailyRequestLimit = dailyRequestLimit;
         this.mapper = mapper;
+        this.userRepository = userRepository;
     }
 
     public record RecommendResponse(List<CourseDetail> courses) {
@@ -180,6 +185,72 @@ public class CourseRecommendationService {
             }
             Course course = courseRepository.save(built);
             return courseService.toDetail(course, user, userId);
+        });
+    }
+
+    /** 완료한 방문·미션은 서버에서 복사하고 이후 일정만 새로 만든다. 원본 코스는 변경하지 않는다. */
+    public CourseDetail refineRemaining(String authorization, Long courseId, String prompt,
+                                        int completedThroughStopSeq, Double lat, Double lng) {
+        UUID userId = authService.getCurrentUser(authorization).id();
+        GeoPoint user = userLocation(lat, lng);
+        if (prompt == null || prompt.isBlank() || prompt.length() > 500) {
+            throw ApiException.badRequest("수정 요청은 1~500자로 입력해 주세요.");
+        }
+        String cleanPrompt = prompt.strip();
+        record Base(String json, Course prefix) {}
+        Base base = tx.execute(status -> {
+            Course original = courseRepository.findById(courseId)
+                    .filter(c -> c.isVisibleTo(userId))
+                    .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
+            int count = original.getStops().size();
+            if (completedThroughStopSeq < 0 || completedThroughStopSeq >= count || completedThroughStopSeq >= 8
+                    || original.getStops().stream().filter(s -> s.getSeq() <= completedThroughStopSeq).count()
+                    != completedThroughStopSeq) {
+                throw ApiException.badRequest("완료한 마지막 장소의 순서를 선택해 주세요. 모두 완료한 코스는 수정할 수 없습니다.");
+            }
+            Course prefix = RemainingCourseBuilder.snapshot(original, userId, completedThroughStopSeq);
+            return new Base(baseJson(original), prefix);
+        });
+        checkRateLimit(userId);
+        GeoPoint anchor = user;
+        if (anchor == null && !base.prefix().getStops().isEmpty()) {
+            var last = base.prefix().getStops().getLast();
+            anchor = new GeoPoint(last.getLat(), last.getLng());
+        }
+        if (anchor == null && base.prefix().hasOrigin()) {
+            anchor = new GeoPoint(base.prefix().getOriginLat(), base.prefix().getOriginLng());
+        }
+        AiCourseDraft draft;
+        try {
+            draft = generator.refineRemaining(base.json(), cleanPrompt, completedThroughStopSeq,
+                    anchor == null ? null : anchor.lat(), anchor == null ? null : anchor.lng());
+        } catch (CourseGenerationException e) {
+            log.warn("남은 일정 수정 실패: {}", e.getMessage());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
+                    "남은 일정을 수정하지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
+        RemainingCourseBuilder.validateDraft(draft);
+        List<ResolvedStop> stops = resolveAll(List.of(draft), anchor).getFirst().stream()
+                .filter(stop -> !RemainingCourseBuilder.alreadyCompleted(base.prefix(), stop.place()))
+                .limit(8 - base.prefix().getStops().size()).toList();
+        if (stops.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "AI_NO_RESULT",
+                    "완료한 장소를 제외한 새 일정을 찾지 못했어요. 요청을 바꿔 다시 시도해 주세요.");
+        }
+        String latestRequest = completedThroughStopSeq + "번까지 완료 후 수정: " + cleanPrompt;
+        String history = base.prefix().getPrompt() == null ? latestRequest
+                : truncate(base.prefix().getPrompt(), 1000 - latestRequest.length() - 3) + " / " + latestRequest;
+        Course tail = build(userId, history, draft, stops);
+        Course combined = RemainingCourseBuilder.combine(base.prefix(), tail, userId, truncate(history, 1000));
+        return tx.execute(status -> {
+            // 외부 API를 기다리는 동안 탈퇴했거나 원본 접근 권한이 사라진 경우 저장하지 않는다.
+            userRepository.lockById(userId).orElseThrow(() ->
+                    new AuthException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+            authService.getCurrentUser(authorization);
+            checkRateLimit(userId);
+            courseRepository.findById(courseId).filter(c -> c.isVisibleTo(userId))
+                    .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
+            return courseService.toDetail(courseRepository.save(combined), user, userId);
         });
     }
 

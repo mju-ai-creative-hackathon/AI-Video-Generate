@@ -4,6 +4,10 @@ import com.example.backend.auth.AuthService;
 import com.example.backend.auth.domain.User;
 import com.example.backend.auth.domain.UserRepository;
 import com.example.backend.common.ApiException;
+import com.example.backend.course.domain.Course;
+import com.example.backend.course.domain.CourseRepository;
+import com.example.backend.diary.DiaryDtos;
+import com.example.backend.diary.DiaryService;
 import com.example.backend.shortform.storage.*;
 import org.slf4j.*;
 import org.springframework.core.io.Resource;
@@ -27,9 +31,13 @@ public class CommunityService {
     private final AuthService auth;
     private final UserRepository users;
     private final MediaStorage storage;
+    private final CourseRepository courses;
+    private final DiaryService diaries;
     public CommunityService(CommunityPostRepository posts, CommunityFeedRepository feed, AuthService auth,
-                            UserRepository users, MediaStorage storage) {
+                            UserRepository users, MediaStorage storage, CourseRepository courses,
+                            DiaryService diaries) {
         this.posts = posts; this.feed = feed; this.auth = auth; this.users = users; this.storage = storage;
+        this.courses = courses; this.diaries = diaries;
     }
 
     @Transactional
@@ -39,7 +47,13 @@ public class CommunityService {
         rejectNul(request.caption());
         var tags = new LinkedHashSet<String>();
         if (request.tags() != null) request.tags().forEach(t -> tags.add(normalizeTag(t)));
-        var post = new CommunityPost(authorId, request.title().strip(), request.caption() == null ? "" : request.caption().strip(), tags);
+        Course linkedCourse = request.courseId() == null ? null : courses.findById(request.courseId())
+                .filter(course -> course.isVisibleTo(authorId))
+                .orElseThrow(() -> ApiException.notFound("연결할 코스를 찾을 수 없습니다."));
+        var post = new CommunityPost(authorId, request.title().strip(),
+                request.caption() == null ? "" : request.caption().strip(), tags,
+                linkedCourse == null ? null : linkedCourse.getId(),
+                linkedCourse == null ? null : linkedCourse.getTitle());
         var written = new ArrayList<String>();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCompletion(int status) {
@@ -104,9 +118,24 @@ public class CommunityService {
     }
 
     @Transactional
+    public ImportResult importCourse(String authorization, UUID id) {
+        UUID viewerId = auth.getCurrentUser(authorization).id();
+        var post = existing(id);
+        if (post.courseId == null) {
+            throw ApiException.notFound("게시물에 연결된 코스가 없습니다.");
+        }
+        Course original = courses.findById(post.courseId)
+                .orElseThrow(() -> ApiException.notFound("가져올 코스를 찾을 수 없습니다."));
+        Course imported = courses.saveAndFlush(Course.imported(viewerId, original));
+        var diary = diaries.start(authorization, new DiaryDtos.Start(imported.getId(), null));
+        return new ImportResult(imported.getId(), diary);
+    }
+
+    @Transactional
     public void delete(String authorization, UUID id) {
         UUID viewer = auth.getCurrentUser(authorization).id();
-        var post = existing(id);
+        var post = posts.findLockedById(id).filter(p -> users.existsById(p.authorId))
+                .orElseThrow(() -> ApiException.notFound("게시물을 찾을 수 없습니다."));
         if (!post.authorId.equals(viewer)) throw ApiException.notFound("게시물을 찾을 수 없습니다.");
         var keys = post.media.stream().map(m -> m.storageKey).toList();
         posts.delete(post);
@@ -128,7 +157,8 @@ public class CommunityService {
                 new Author(author.getId(), author.getName(), author.getProfileImageUrl()),
                 post.tags.stream().sorted().toList(), thumbnail,
                 ordered.stream().filter(m -> m.position >= 0).map(m -> new MediaView(m.id, m.kind, m.contentType,
-                        m.sizeBytes, mediaUrl(post.id, m.id))).toList(), post.createdAt);
+                        m.sizeBytes, mediaUrl(post.id, m.id))).toList(),
+                post.courseId == null ? null : new LinkedCourse(post.courseId, post.courseTitle), post.createdAt);
     }
     private static String mediaUrl(UUID postId, UUID mediaId) { return "/api/community/posts/" + postId + "/media/" + mediaId; }
     private static String normalizeTag(String value) {
