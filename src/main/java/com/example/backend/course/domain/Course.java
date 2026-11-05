@@ -145,6 +145,20 @@ public class Course {
                 totalMinutes, estimatedCost, 0);
     }
 
+    public static Course imported(UUID ownerId, Course original) {
+        Course copy = new Course(CourseSource.IMPORTED, ownerId, original.prompt, original.title,
+                original.summary, original.region, original.totalMinutes, original.estimatedCost, 0);
+        if (original.hasOrigin()) {
+            copy.setOrigin(original.originName, original.originAddress, original.originLat, original.originLng);
+        }
+        original.stops.forEach(stop -> copy.addStop(stop.getSeq(), stop.getDay(), stop.getName(),
+                stop.getDescription(), stop.getAddress(), stop.getLat(), stop.getLng(), stop.getImageUrl(),
+                stop.getExternalPlaceId(), stop.getStartTime(), stop.getStayMinutes()));
+        original.missions.forEach(mission -> copy.addMission(mission.getStopSeq(), mission.getKind(),
+                mission.getTitle(), mission.getGuide(), mission.getDurationSec()));
+        return copy;
+    }
+
     public CourseStop addStop(int seq, String name, String description, String address, double lat, double lng,
                               String imageUrl, String externalPlaceId, LocalTime startTime, int stayMinutes) {
         CourseStop stop = new CourseStop(this, seq, name, description, address, lat, lng,

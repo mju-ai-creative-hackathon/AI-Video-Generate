@@ -24,6 +24,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     List<Course> findBySourceAndOwnerId(CourseSource source, UUID ownerId);
 
+    List<Course> findByOwnerId(UUID ownerId);
+
     /** AI 코스 생성 횟수 제한용. */
     long countBySourceAndOwnerIdAndCreatedAtAfter(CourseSource source, UUID ownerId, Instant after);
 

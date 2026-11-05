@@ -23,6 +23,13 @@ public class CommunityPost {
     @Column(length = 3000)
     String caption;
 
+    /** Snapshot link without an FK so author withdrawal cannot block cleanup. */
+    @Column(name = "course_id", updatable = false)
+    Long courseId;
+
+    @Column(name = "course_title", length = 100, updatable = false)
+    String courseTitle;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     Instant createdAt;
 
@@ -38,11 +45,13 @@ public class CommunityPost {
 
     protected CommunityPost() {}
 
-    CommunityPost(UUID authorId, String title, String caption, Set<String> tags) {
+    CommunityPost(UUID authorId, String title, String caption, Set<String> tags, Long courseId, String courseTitle) {
         this.authorId = authorId;
         this.title = title;
         this.caption = caption;
         this.tags = new LinkedHashSet<>(tags);
+        this.courseId = courseId;
+        this.courseTitle = courseTitle;
         this.createdAt = Instant.now();
     }
 }
