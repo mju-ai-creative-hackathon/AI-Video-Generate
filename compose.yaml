@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:17
+    container_name: project-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ios_app
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
