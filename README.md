@@ -1,5 +1,7 @@
 # Hackathon Backend
 
+커뮤니티 게시물·검색·랜덤 탐색 API: [COMMUNITY_API.md](docs/COMMUNITY_API.md)
+
 숏폼 제작 중계 API 및 AI 연동 가안: [SHORTFORM_API.md](docs/SHORTFORM_API.md)
 
 Java 21, Spring Boot, Gradle, PostgreSQL로 구성된 백엔드 프로젝트입니다.

@@ -22,7 +22,7 @@ public class ShortformUploadAuthFilter extends OncePerRequestFilter {
     public ShortformUploadAuthFilter(AuthService auth, ObjectMapper mapper) { this.auth = auth; this.mapper = mapper; }
     @Override protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        return !"POST".equals(request.getMethod()) || !path.matches("/api/shortforms/[^/]+/assets");
+        return !"POST".equals(request.getMethod()) || !path.matches("(/api/shortforms/[^/]+/assets|/api/community/posts)");
     }
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                              FilterChain chain) throws ServletException, IOException {
