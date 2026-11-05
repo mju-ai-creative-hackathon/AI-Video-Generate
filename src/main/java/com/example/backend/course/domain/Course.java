@@ -127,6 +127,26 @@ public class Course {
         return mission;
     }
 
+    /** 프리셋 동기화용: 제목·출처·소유자는 그대로 두고 나머지 정보만 바꾼다. */
+    public void updatePresetInfo(String summary, String region, int totalMinutes, Integer estimatedCost,
+                                 int displayOrder) {
+        this.summary = summary;
+        this.region = region;
+        this.totalMinutes = totalMinutes;
+        this.estimatedCost = estimatedCost;
+        this.displayOrder = displayOrder;
+    }
+
+    /** 장소를 모두 지운다(orphanRemoval 로 DB 에서도 삭제). */
+    public void clearStops() {
+        stops.clear();
+    }
+
+    /** 촬영 미션을 모두 지운다(orphanRemoval 로 DB 에서도 삭제). */
+    public void clearMissions() {
+        missions.clear();
+    }
+
     /** PRESET 은 누구나, AI 코스는 소유자만 볼 수 있다. */
     public boolean isVisibleTo(UUID viewerId) {
         return source == CourseSource.PRESET || (ownerId != null && ownerId.equals(viewerId));
