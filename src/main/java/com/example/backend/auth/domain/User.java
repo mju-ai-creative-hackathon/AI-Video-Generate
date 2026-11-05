@@ -27,6 +27,12 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    @Column(name = "google_subject", unique = true, length = 255)
+    private String googleSubject;
+
+    @Column(name = "profile_image_url", length = 2048)
+    private String profileImageUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -58,5 +64,21 @@ public class User {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getGoogleSubject() {
+        return googleSubject;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void linkGoogleAccount(String googleSubject, String name, String profileImageUrl) {
+        this.googleSubject = googleSubject;
+        if (name != null && !name.isBlank()) {
+            this.name = name.trim();
+        }
+        this.profileImageUrl = profileImageUrl;
     }
 }

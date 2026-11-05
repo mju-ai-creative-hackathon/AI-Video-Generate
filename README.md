@@ -46,4 +46,41 @@ VS Code에서 `BackendApplication.java`의 `Run`을 누르거나 터미널에서
 docker compose down
 ```
 
+## 인증 API
+
+### 회원가입
+
+`POST /api/auth/signup`
+
+```json
+{
+  "email": "user@example.com",
+  "name": "홍길동",
+  "password": "password123"
+}
+```
+
+### 로그인
+
+`POST /api/auth/login`
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+회원가입과 로그인은 `accessToken`, `tokenType`, `expiresIn`, `user`를 반환합니다.
+
+### 내 정보 조회
+
+`GET /api/auth/me`
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+운영 환경에서는 `JWT_SECRET`을 32바이트 이상의 충분히 긴 무작위 값으로 반드시 설정하세요.
+
 데이터까지 삭제할 때만 `docker compose down -v`를 사용합니다.
