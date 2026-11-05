@@ -43,6 +43,9 @@ public class CommunityPost {
     @OrderBy("position ASC")
     List<CommunityMedia> media = new ArrayList<>();
 
+    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    List<CommunityComment> comments = new ArrayList<>();
+
     protected CommunityPost() {}
 
     CommunityPost(UUID authorId, String title, String caption, Set<String> tags, Long courseId, String courseTitle) {

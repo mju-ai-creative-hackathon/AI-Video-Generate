@@ -134,7 +134,8 @@ public class CommunityService {
     @Transactional
     public void delete(String authorization, UUID id) {
         UUID viewer = auth.getCurrentUser(authorization).id();
-        var post = existing(id);
+        var post = posts.findLockedById(id).filter(p -> users.existsById(p.authorId))
+                .orElseThrow(() -> ApiException.notFound("게시물을 찾을 수 없습니다."));
         if (!post.authorId.equals(viewer)) throw ApiException.notFound("게시물을 찾을 수 없습니다.");
         var keys = post.media.stream().map(m -> m.storageKey).toList();
         posts.delete(post);

@@ -2,6 +2,8 @@
 
 커뮤니티 게시물·검색·랜덤 탐색 API: [COMMUNITY_API.md](docs/COMMUNITY_API.md)
 
+커뮤니티 댓글 작성·조회·수정·삭제 API: [COMMUNITY_COMMENTS_API.md](docs/COMMUNITY_COMMENTS_API.md)
+
 일정 시작·종료, 이동 경로·걸음수, 나의 일기장 API: [diary-api.md](docs/diary-api.md)
 
 진행 중인 코스의 완료 장소를 유지하고 남은 일정 수정: [COURSE_REFINEMENT_API.md](docs/COURSE_REFINEMENT_API.md)

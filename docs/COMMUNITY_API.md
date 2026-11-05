@@ -1,5 +1,7 @@
 # 커뮤니티 탐색 API
 
+게시물별 댓글 API는 [COMMUNITY_COMMENTS_API.md](COMMUNITY_COMMENTS_API.md)를 참고하세요.
+
 숏폼 영상 게시물을 등록하고, 검색창과 해시태그 칩으로 검색하거나 랜덤 탐색 목록을 조회합니다.
 이 저장소는 백엔드이므로 이미지의 그리드 화면은 프론트에서 응답의 `thumbnailUrl`로 구성합니다.
 

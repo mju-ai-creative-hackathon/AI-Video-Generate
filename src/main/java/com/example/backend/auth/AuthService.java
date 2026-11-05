@@ -13,6 +13,8 @@ import com.example.backend.course.domain.CourseRepository;
 import com.example.backend.course.domain.SavedCourseRepository;
 import com.example.backend.place.domain.BookmarkRepository;
 import com.example.backend.diary.domain.DiaryEntryRepository;
+import com.example.backend.community.CommunityCommentRepository;
+import com.example.backend.community.CommunityPostRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -34,6 +36,8 @@ public class AuthService {
     private final SavedCourseRepository savedCourseRepository;
     private final CourseRepository courseRepository;
     private final DiaryEntryRepository diaryEntryRepository;
+    private final CommunityCommentRepository communityCommentRepository;
+    private final CommunityPostRepository communityPostRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(
@@ -44,7 +48,9 @@ public class AuthService {
             BookmarkRepository bookmarkRepository,
             SavedCourseRepository savedCourseRepository,
             CourseRepository courseRepository,
-            DiaryEntryRepository diaryEntryRepository
+            DiaryEntryRepository diaryEntryRepository,
+            CommunityCommentRepository communityCommentRepository,
+            CommunityPostRepository communityPostRepository
     ) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -54,6 +60,8 @@ public class AuthService {
         this.savedCourseRepository = savedCourseRepository;
         this.courseRepository = courseRepository;
         this.diaryEntryRepository = diaryEntryRepository;
+        this.communityCommentRepository = communityCommentRepository;
+        this.communityPostRepository = communityPostRepository;
     }
 
     @Transactional
@@ -132,6 +140,9 @@ public class AuthService {
         User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
 
+        // Comment edits, post removal and withdrawal acquire parent locks before comment rows.
+        communityPostRepository.lockCommentedPostsByAuthor(userId);
+        communityCommentRepository.deleteByAuthorId(userId);
         diaryEntryRepository.deleteByUserId(userId);
         refreshSessionRepository.deleteByUserId(userId);
         bookmarkRepository.deleteByUserId(userId);
