@@ -91,6 +91,42 @@ public class MediaStorage {
         }
     }
 
+    /**
+     * AI 서버가 만든 완성본(MP4)을 저장한다. 업로드와 달리 사용자 파일이 아니므로 영상 용량 제한 대신
+     * 별도 상한을 쓴다. 스트림은 호출한 쪽이 닫는다.
+     */
+    public StoredMedia storeGenerated(InputStream input, long maximum) {
+        Path destination = null;
+        boolean created = false;
+        try {
+            byte[] header = input.readNBytes(HEADER_BYTES);
+            Format format = detect(header);
+            if (!format.extension().equals("mp4")) throw unsupported();
+            String key = UUID.randomUUID() + "." + format.extension();
+            destination = resolve(key);
+            long total = header.length;
+            try (OutputStream output = Files.newOutputStream(destination, StandardOpenOption.CREATE_NEW,
+                    StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)) {
+                created = true;
+                output.write(header);
+                byte[] buffer = new byte[64 * 1024];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    total += read;
+                    if (total > maximum) throw tooLarge();
+                    output.write(buffer, 0, read);
+                }
+            }
+            return new StoredMedia(key, "shortform.mp4", format.contentType(), total, format.kind());
+        } catch (ApiException exception) {
+            cleanPartial(created ? destination : null);
+            throw exception;
+        } catch (IOException exception) {
+            cleanPartial(created ? destination : null);
+            throw storageError();
+        }
+    }
+
     public Resource load(String storageKey) {
         Path file = resolve(storageKey);
         if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS))

@@ -1,0 +1,8 @@
+# deploy/vm/Dockerfile 전용(BuildKit). 루트 .dockerignore는 CI용이라 jar만 남긴다.
+*
+!gradlew
+!gradle/
+!settings.gradle
+!build.gradle
+!src/
+src/test/
