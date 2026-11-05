@@ -174,4 +174,22 @@ class AuthServiceIntegrationTests extends PostgresIntegrationTest {
                 .hasSize(64)
                 .isNotEqualTo(login.refreshToken());
     }
+
+    @Test
+    void deleteAccountRemovesUserAndInvalidatesIssuedTokens() {
+        AuthResponse signup = authService.signup(
+                new SignupRequest("withdrawal@example.com", "탈퇴 사용자", "password123")
+        );
+
+        authService.deleteAccount("Bearer " + signup.accessToken());
+
+        assertThat(userRepository.findByEmail("withdrawal@example.com")).isEmpty();
+        assertThat(refreshSessionRepository.count()).isZero();
+        assertThatThrownBy(() -> authService.getCurrentUser("Bearer " + signup.accessToken()))
+                .isInstanceOfSatisfying(AuthException.class, exception ->
+                        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequest(signup.refreshToken())))
+                .isInstanceOfSatisfying(AuthException.class, exception ->
+                        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
 }
