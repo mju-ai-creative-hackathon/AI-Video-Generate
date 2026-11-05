@@ -1,0 +1,20 @@
+{
+  "1": {"class_type": "LoadImage", "inputs": {"image": "{{IMAGE}}"}},
+  "2": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "{{MODEL_HIGH}}"}},
+  "3": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "{{MODEL_LOW}}"}},
+  "4": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["2", 0], "lora_name": "{{LORA_HIGH}}", "strength_model": 1.0}},
+  "5": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["3", 0], "lora_name": "{{LORA_LOW}}", "strength_model": 1.0}},
+  "6": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["4", 0], "shift": 5.0}},
+  "7": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["5", 0], "shift": 5.0}},
+  "8": {"class_type": "CLIPLoader", "inputs": {"clip_name": "{{TEXT_ENCODER}}", "type": "wan", "device": "default"}},
+  "9": {"class_type": "VAELoader", "inputs": {"vae_name": "{{VAE}}"}},
+  "10": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["8", 0], "text": "{{PROMPT}}"}},
+  "11": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["8", 0], "text": "{{NEGATIVE_PROMPT}}"}},
+  "12": {"class_type": "WanImageToVideo", "inputs": {"positive": ["10", 0], "negative": ["11", 0], "vae": ["9", 0], "start_image": ["1", 0], "width": "{{WIDTH}}", "height": "{{HEIGHT}}", "length": "{{FRAMES}}", "batch_size": 1}},
+  "13": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["6", 0], "positive": ["12", 0], "negative": ["12", 1], "latent_image": ["12", 2], "add_noise": "enable", "noise_seed": "{{SEED}}", "steps": "{{STEPS}}", "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": "{{SPLIT_STEP}}", "return_with_leftover_noise": "enable"}},
+  "14": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["7", 0], "positive": ["12", 0], "negative": ["12", 1], "latent_image": ["13", 0], "add_noise": "disable", "noise_seed": "{{SEED}}", "steps": "{{STEPS}}", "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": "{{SPLIT_STEP}}", "end_at_step": 10000, "return_with_leftover_noise": "disable"}},
+  "15": {"class_type": "VAEDecode", "inputs": {"samples": ["14", 0], "vae": ["9", 0]}},
+  "16": {"class_type": "RIFE VFI", "inputs": {"frames": ["15", 0], "ckpt_name": "{{RIFE_MODEL}}", "clear_cache_after_n_frames": 10, "multiplier": 2, "fast_mode": true, "ensemble": true, "scale_factor": 1.0, "dtype": "float32", "torch_compile": false, "batch_size": 1}},
+  "17": {"class_type": "CreateVideo", "inputs": {"images": ["16", 0], "fps": 32.0}},
+  "18": {"class_type": "SaveVideo", "inputs": {"video": ["17", 0], "filename_prefix": "{{OUTPUT_PREFIX}}", "format": "mp4", "codec": "h264"}}
+}

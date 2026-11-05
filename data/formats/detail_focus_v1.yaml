@@ -1,0 +1,55 @@
+# 일반적인 영상 구성 지식으로 직접 작성한 초안. 특정 영상을 옮겨 적지 않았다.
+format_id: detail_focus_v1
+name: 디테일 모음 (카페·음식·공간)
+hook_type: 감탄형
+total_sec: {min: 20, max: 40}
+slots:
+  - slot: hook
+    role: hook
+    sec: {min: 2.0, max: 3.0}
+    photo_need:
+      prefer: [음식, 사물]
+      moods: [설렘, 따뜻함]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: detail, move: slow_push_in}
+      - {size: medium, move: static}
+    narration: {goal: "가장 눈에 띄는 디테일로 시선을 잡음", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  - slot: space
+    role: body
+    required: false
+    repeat: {min: 0, max: 2}
+    sec: {min: 2.5, max: 4.0}
+    photo_need:
+      prefer: [실내, 풍경]
+      moods: [잔잔함]
+    shot_options:
+      - {size: wide, move: pan_right}
+      - {size: wide, move: slow_push_in}
+    narration: {goal: "공간의 분위기를 묘사", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: detail
+    role: body
+    repeat: {min: 2, max: 8}
+    sec: {min: 2.0, max: 3.5}
+    photo_need:
+      prefer: [음식, 사물]
+      moods: [따뜻함, 잔잔함, 설렘]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: detail, move: pan_right}
+      - {size: medium, move: static}
+    narration: {goal: "사진 속 디테일 하나와 그때의 감상", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: ending
+    role: ending
+    sec: {min: 2.5, max: 4.0}
+    photo_need:
+      prefer: [실내, 풍경, 음식]
+      moods: [잔잔함, 따뜻함]
+    shot_options:
+      - {size: wide, move: pull_out}
+      - {size: medium, move: pull_out}
+    narration: {goal: "다시 오고 싶은 이유나 여운으로 마무리", chars_per_sec: 5.5}
+    text: {use: none, position: top}

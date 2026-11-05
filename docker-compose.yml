@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: vlog
+      POSTGRES_PASSWORD: vlog
+      POSTGRES_DB: vlog
+    # 인증이 약한 개발용 DB이므로 이 PC에서만 접속하도록 묶는다.
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - vlog_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vlog -d vlog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  vlog_pgdata:

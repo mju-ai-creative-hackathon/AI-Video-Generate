@@ -1,0 +1,11 @@
+# 샷 크기, 카메라 움직임, 구도 유형의 값. pipeline/schemas.py의 Literal과 일치해야 한다.
+# 판단 기준은 구도 데이터 구축(D 단계)에서 확정한다.
+subject_types: [인물, 음식, 사물, 풍경, 실내]
+shot_sizes:
+  wide: 피사체와 주변 환경이 함께 보임
+  medium: 피사체가 프레임 높이의 절반 정도
+  close_up: 피사체가 프레임 대부분을 차지
+  detail: 피사체의 일부만 크게 보임
+camera_moves: [static, slow_push_in, pull_out, pan_left, pan_right, tilt_up, handheld]
+compositions: [rule_of_thirds, center, symmetric, leading_line, other]
+roles: [hook, body, ending]

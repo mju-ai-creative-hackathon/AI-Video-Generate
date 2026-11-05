@@ -1,0 +1,20 @@
+# 화면 설계 → Wan 프롬프트 변환 규칙. 검색이 아닌 설정으로 관리한다.
+# 항목별 재현율은 M4 벤치마크에서 측정해 motion_presets 테이블에 기록한다.
+template: "{shot}{subject}, {action}, {move}, natural light, realistic, smooth motion"
+shots:
+  wide: "Wide shot of "
+  medium: "Medium shot of "
+  close_up: "Close-up of "
+  detail: "Extreme close-up of "
+moves:
+  static: "camera holds still"
+  slow_push_in: "slow push-in"
+  pull_out: "slow pull-out"
+  pan_left: "slow pan to the left"
+  pan_right: "slow pan to the right"
+  tilt_up: "slow tilt up"
+  handheld: "subtle handheld camera movement"
+# 인물 컷은 움직임을 작게 지시해 얼굴 왜곡을 줄인다.
+person_suffix: ", very subtle movement, face stays natural and undistorted"
+default_subject: "the subject"
+default_action: "gentle natural movement"

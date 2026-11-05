@@ -1,0 +1,42 @@
+# 일반적인 영상 구성 지식으로 직접 작성한 초안. 특정 영상을 옮겨 적지 않았다.
+format_id: day_log_v1
+name: 하루 기록
+hook_type: 상황 제시형
+total_sec: {min: 25, max: 50}
+slots:
+  - slot: hook
+    role: hook
+    sec: {min: 2.0, max: 3.5}
+    photo_need:
+      prefer: [인물, 실내, 풍경]
+      moods: [잔잔함, 활기]
+    shot_options:
+      - {size: medium, move: slow_push_in}
+      - {size: wide, move: slow_push_in}
+    narration: {goal: "오늘이 어떤 하루인지 한 문장으로 제시", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  - slot: moment
+    role: body
+    repeat: {min: 3, max: 10}
+    sec: {min: 2.0, max: 4.0}
+    photo_need:
+      prefer: []
+      moods: []
+    shot_options:
+      - {size: medium, move: pan_right}
+      - {size: close_up, move: slow_push_in}
+      - {size: wide, move: pan_left}
+      - {size: medium, move: handheld}
+    narration: {goal: "시간 흐름에 따라 그 순간의 일과 감상을 말함", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: ending
+    role: ending
+    sec: {min: 2.5, max: 4.5}
+    photo_need:
+      prefer: [풍경, 실내, 인물]
+      moods: [잔잔함, 따뜻함]
+    shot_options:
+      - {size: wide, move: pull_out}
+      - {size: medium, move: static}
+    narration: {goal: "하루를 돌아보는 한 문장으로 마무리", chars_per_sec: 5.5}
+    text: {use: none, position: top}

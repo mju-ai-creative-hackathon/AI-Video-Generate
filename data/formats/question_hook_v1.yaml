@@ -1,0 +1,66 @@
+# 일반적인 영상 구성 지식으로 직접 작성한 초안. 특정 영상을 옮겨 적지 않았다.
+format_id: question_hook_v1
+name: 질문형 도입
+hook_type: 질문형
+total_sec: {min: 25, max: 45}
+slots:
+  - slot: hook
+    role: hook
+    sec: {min: 2.0, max: 3.5}
+    photo_need:
+      prefer: [풍경, 인물, 음식]
+      moods: [설렘, 활기]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: medium, move: slow_push_in}
+      - {size: wide, move: pan_right}
+    narration: {goal: "궁금증을 일으키는 짧은 질문으로 시작", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  - slot: arrival
+    role: body
+    sec: {min: 2.5, max: 4.0}
+    photo_need:
+      prefer: [풍경, 실내]
+      moods: [잔잔함, 설렘]
+    shot_options:
+      - {size: wide, move: pan_right}
+      - {size: wide, move: slow_push_in}
+    narration: {goal: "어디에 있는지 분위기를 보여주며 상황 소개", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: body_detail
+    role: body
+    repeat: {min: 2, max: 7}
+    sec: {min: 2.0, max: 3.5}
+    photo_need:
+      prefer: [음식, 사물, 인물]
+      moods: [잔잔함, 설렘]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: medium, move: pan_right}
+      - {size: medium, move: static}
+    narration: {goal: "사진 속 디테일을 묘사", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: turn
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 2.5, max: 4.0}
+    photo_need:
+      prefer: [인물, 풍경]
+      moods: []
+    shot_options:
+      - {size: medium, move: slow_push_in}
+      - {size: wide, move: tilt_up}
+    narration: {goal: "도입 질문에 대한 답을 암시", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: ending
+    role: ending
+    sec: {min: 2.5, max: 4.5}
+    photo_need:
+      prefer: [풍경, 인물]
+      moods: [잔잔함, 따뜻함]
+    shot_options:
+      - {size: wide, move: pull_out}
+      - {size: medium, move: pull_out}
+    narration: {goal: "도입 질문에 답하며 여운 있게 마무리", chars_per_sec: 5.5}
+    text: {use: none, position: top}

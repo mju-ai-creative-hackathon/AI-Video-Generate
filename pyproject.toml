@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vlog-shorts"
+version = "0.1.0"
+description = "사진 기반 숏폼 브이로그 제작 파이프라인 (생성 전 사람 수정·승인 필수)"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13",
+    "pgvector>=0.3",
+    "psycopg[binary]>=3.1",
+    "httpx>=0.27",
+    "websocket-client>=1.8",
+    "ruamel.yaml>=0.18",
+    "pillow>=10.3",
+    "pillow-heif>=0.16",
+    "imagehash>=4.3",
+    "opencv-python-headless>=4.9",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+vlog = "pipeline.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["pipeline*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["ffmpeg: 실제 ffmpeg/ffprobe가 PATH에 있어야 실행되는 테스트"]

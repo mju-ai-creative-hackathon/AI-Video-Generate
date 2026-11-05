@@ -1,0 +1,105 @@
+# 파이프라인 설정. 비밀 값과 접속 주소는 .env에 둔다.
+storage_dir: storage
+
+llm:
+  # 이 PC에 설치된 모델을 쓴다. /api/show 기준 vision·thinking 지원, Apache 라이선스.
+  # gemma4:latest(8.0B, 9.6GB)는 VRAM 16GB에 들어간다. gemma4:26b(17GB)는 VRAM을 넘어 일부가 RAM으로 간다.
+  # 대본 모델은 M2 비교로 확정한다. 후보: exaone3.5:7.8b(비상업 라이선스), gemma4:26b
+  vision_model: gemma4:latest
+  text_model: gemma4:latest
+  temperature: 0.7
+  num_ctx: 8192
+  timeout_sec: 600
+  max_retries: 2     # 스키마 실패 시 재요청 횟수 (총 3회 시도)
+  # JSON만 받으면 되므로 사고 과정을 끈다. null이면 모델 기본값.
+  think: false
+  keep_alive: 0      # 호출이 끝나면 바로 내려 VRAM을 비운다
+
+preprocess:
+  max_analysis_side: 1568
+  phash_distance: 5
+  blur_threshold: 60.0
+  jpeg_quality: 95
+
+storyboard:
+  formats_dir: data/formats
+  style_rules: data/style_rules.yaml
+  motion_presets: data/motion_presets.yaml
+  min_format_fit: 0.45    # 이보다 낮으면 포맷 변경 안내
+  low_slot_fit: 0.35      # 이보다 낮은 컷은 경고로 표시
+  chars_per_sec: 5.5      # 슬롯에 값이 없을 때 쓰는 기본값. M3 실측으로 보정
+  chars_tolerance: 1.15
+  max_script_retries: 2
+  min_crop_height_px: 640 # 이보다 작은 크롭은 해상도 부족으로 본다
+
+rag:
+  enabled: true
+  candidates: 200
+  top_k: 15
+  options: 3
+  mmr_lambda: 0.7
+  weight_image: 0.5
+  weight_layout: 0.35
+  weight_score: 0.15
+  derived_weight: 0.8     # 비율을 변환한 크롭(derived)의 낮은 가중치
+
+tts:
+  provider: elevenlabs
+  voice_id: ""            # M3 한국어 비교 후 확정
+  model_id: eleven_multilingual_v2
+  output_format: mp3_44100_128
+  stability: 0.5
+  similarity_boost: 0.75
+  style: 0.0
+  speed: 1.0
+  max_retries: 5
+  timeout_sec: 120
+
+video:
+  provider: comfyui
+  workflow: workflows/wan22_i2v.json
+  width: 480
+  height: 832
+  fps: 16
+  steps: 6
+  base_seed: 20261105
+  max_retries: 2          # 시드를 바꿔 재시도
+  timeout_sec: 1800
+  min_free_vram_mb: 8000
+  # ComfyUI models 폴더 기준 파일명. M0에서 받은 실제 파일명으로 맞춘다.
+  models:
+    high_noise: Wan2.2-I2V-A14B-HighNoise-Q6_K.gguf
+    low_noise: Wan2.2-I2V-A14B-LowNoise-Q6_K.gguf
+    lora_high: wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors
+    lora_low: wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors
+    text_encoder: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+    vae: wan_2.1_vae.safetensors
+    rife: rife49.pth
+  negative_prompt: "blurry, distorted face, deformed hands, extra fingers, text, watermark, low quality"
+
+timing:
+  pad_sec: 0.25
+  source_fps: 16
+  max_frames: 81
+  min_frames: 33
+  max_slowdown: 1.2
+  min_cut_sec: 2.0
+
+compose:
+  width: 1080
+  height: 1920
+  fps: 30
+  crf: 18
+  preset: medium
+  audio_bitrate: 192k
+  loudness_lufs: -14.0
+  bgm_path: null          # 라이선스를 확보한 파일만 지정
+  bgm_volume: 0.25
+  fade_sec: 0.3
+  font_name: Pretendard   # fonts_dir에 없으면 Malgun Gothic으로 대체
+  fonts_dir: assets/fonts
+  narration_font_size: 64
+  emphasis_font_size: 88
+  narration_margin_ratio: 0.30   # 플랫폼 UI를 피해 하단 약 30% 위에 배치
+  emphasis_margin_ratio: 0.14
+  max_chars_per_line: 14
