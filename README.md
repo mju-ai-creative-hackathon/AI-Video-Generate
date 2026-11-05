@@ -85,6 +85,108 @@ Authorization: Bearer <accessToken>
 
 데이터까지 삭제할 때만 `docker compose down -v`를 사용합니다.
 
+## 장소 API
+
+홈 화면 "서울에서 뭐 하지?" 섹션용 API입니다. `Authorization: Bearer <accessToken>` 헤더는 목록·상세 조회에서는 선택이고(있으면 `bookmarked`가 사용자 기준으로 채워짐, 잘못된 토큰이면 401), 북마크 API에서는 필수입니다.
+
+서버 시작 시 `places` 테이블이 비어 있으면 서울 샘플 장소 12개를 넣습니다. 끄려면 `SEED_PLACES_ENABLED=false`로 설정합니다.
+
+### 카테고리 칩 목록
+
+`GET /api/places/categories`
+
+```json
+[
+  { "code": "ALL", "label": "전체" },
+  { "code": "RESTAURANT", "label": "맛집" },
+  { "code": "CAFE", "label": "카페" },
+  { "code": "CULTURE", "label": "전시·문화" },
+  { "code": "WALK", "label": "산책" },
+  { "code": "EVENT", "label": "이벤트" }
+]
+```
+
+### 장소 목록 (모두 보기)
+
+`GET /api/places?category=WALK&curated=true&page=0&size=10`
+
+- `category`: `ALL`(기본값), `RESTAURANT`, `CAFE`, `CULTURE`, `WALK`, `EVENT`. 그 외 값은 400.
+- `curated`: 선택. `true`면 "추천 예시" 장소만.
+- `page`: 0부터 시작(기본 0), `size`: 기본 10, 최대 50.
+- 정렬: `displayOrder` 오름차순, 같으면 `id` 오름차순.
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "title": "북촌 골목 산책",
+      "district": "종로구",
+      "category": "WALK",
+      "categoryLabel": "산책",
+      "imageUrl": "https://picsum.photos/seed/bukchon/800/600",
+      "curated": true,
+      "bookmarked": false
+    }
+  ],
+  "page": 0,
+  "size": 10,
+  "totalElements": 1,
+  "hasNext": false
+}
+```
+
+### 장소 상세
+
+`GET /api/places/{id}`
+
+목록 항목 필드에 `description`, `address`, `latitude`, `longitude`가 추가됩니다.
+
+```json
+{
+  "id": 1,
+  "title": "북촌 골목 산책",
+  "district": "종로구",
+  "category": "WALK",
+  "categoryLabel": "산책",
+  "imageUrl": "https://picsum.photos/seed/bukchon/800/600",
+  "curated": true,
+  "bookmarked": false,
+  "description": "한옥 지붕 사이로 이어지는 골목을 천천히 걸으며 서울의 옛 정취를 느껴 보세요.",
+  "address": "서울 종로구 계동길 37",
+  "latitude": 37.5826,
+  "longitude": 126.9837
+}
+```
+
+없는 장소면 404:
+
+```json
+{ "code": "NOT_FOUND", "message": "장소를 찾을 수 없습니다.", "errors": {}, "timestamp": "..." }
+```
+
+### 북마크 추가 / 해제 (로그인 필요)
+
+`PUT /api/places/{id}/bookmark` → `{ "placeId": 1, "bookmarked": true }`
+
+`DELETE /api/places/{id}/bookmark` → `{ "placeId": 1, "bookmarked": false }`
+
+여러 번 호출해도 결과가 같습니다(멱등). 토큰이 없거나 잘못되면 401, 장소가 없으면 404입니다.
+
+### 내 북마크 목록 (로그인 필요)
+
+`GET /api/places/bookmarks?page=0&size=10`
+
+장소 목록과 같은 페이지 형식이며, 최근에 북마크한 순서로 정렬되고 `bookmarked`는 항상 `true`입니다.
+
+### 오류 응답
+
+| 상황 | 상태 | code |
+| --- | --- | --- |
+| 지원하지 않는 카테고리, 잘못된 page/size | 400 | `INVALID_REQUEST` |
+| 토큰 없음/잘못된 토큰 | 401 | `UNAUTHORIZED` |
+| 장소 없음 | 404 | `NOT_FOUND` |
+
 ## 배포 (AWS)
 
 `main`에 push하면 GitHub Actions가 빌드·테스트 → ECR 이미지 push → SSM으로 EC2에 배포한다.
