@@ -32,6 +32,9 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
     private static final String BASE = "/api/community/posts";
     private static final byte[] PNG = Base64.getDecoder().decode(
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6P9sAAAAASUVORK5CYII=");
+    private static final byte[] MP4 = ByteBuffer.allocate(24).putInt(24)
+            .put("ftypisom".getBytes(StandardCharsets.US_ASCII))
+            .putInt(0).put("isommp42".getBytes(StandardCharsets.US_ASCII)).array();
     private static final Path STORAGE = Path.of("build", "community-test-" + UUID.randomUUID()).toAbsolutePath();
     @Autowired MockMvc mvc;
     @Autowired AuthService auth;
@@ -56,9 +59,11 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
         return multipart(BASE).file(new MockMultipartFile("post", "", "application/json",
                 mapper.writeValueAsBytes(Map.of("title", title, "caption", caption, "tags", tags))));
     }
-    private MockMultipartFile photo() { return new MockMultipartFile("files", "seoul.png", "image/png", PNG); }
+    private MockMultipartFile video() { return new MockMultipartFile("video", "clip.mp4", "video/mp4", MP4); }
+    private MockMultipartFile cover() { return new MockMultipartFile("cover", "cover.png", "image/png", PNG); }
     private JsonNode create(String bearer, String title, String caption, String... tags) throws Exception {
-        return json(mvc.perform(upload(title, caption, List.of(tags)).file(photo()).header("Authorization", bearer))
+        return json(mvc.perform(upload(title, caption, List.of(tags)).file(video()).file(cover())
+                        .header("Authorization", bearer))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
     private JsonNode explore(String keyword, String tag) throws Exception {
@@ -132,10 +137,12 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
     }
 
     @Test void rejectsUnauthenticatedAndUnsafeUploadsAndInvalidParameters() throws Exception {
-        mvc.perform(upload("사진", "", List.of()).file(photo())).andExpect(status().isUnauthorized());
-        mvc.perform(upload("위험 파일", "", List.of()).file(new MockMultipartFile("files", "evil.svg", "image/svg+xml",
-                "<svg/>".getBytes(StandardCharsets.UTF_8))).header("Authorization", owner)).andExpect(status().isBadRequest());
-        mvc.perform(upload("잘못된 태그", "", List.of("tag with spaces")).file(photo()).header("Authorization", owner))
+        mvc.perform(upload("영상", "", List.of()).file(video()).file(cover())).andExpect(status().isUnauthorized());
+        mvc.perform(upload("위험 파일", "", List.of()).file(new MockMultipartFile("video", "evil.svg", "image/svg+xml",
+                        "<svg/>".getBytes(StandardCharsets.UTF_8))).file(cover()).header("Authorization", owner))
+                .andExpect(status().isBadRequest());
+        mvc.perform(upload("잘못된 태그", "", List.of("tag with spaces")).file(video()).file(cover())
+                        .header("Authorization", owner))
                 .andExpect(status().isBadRequest());
         mvc.perform(get(BASE + "/explore").param("size", "0")).andExpect(status().isBadRequest());
         mvc.perform(get(BASE + "/explore").param("size", "51")).andExpect(status().isBadRequest());
@@ -143,14 +150,15 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
         assertThat(posts.count()).isZero();
     }
 
-    @Test void videoNeedsPhotoCoverForGridThumbnail() throws Exception {
-        byte[] mp4 = ByteBuffer.allocate(24).putInt(24).put("ftypisom".getBytes(StandardCharsets.US_ASCII))
-                .putInt(0).put("isommp42".getBytes(StandardCharsets.US_ASCII)).array();
-        var video = new MockMultipartFile("files", "clip.mp4", "video/mp4", mp4);
-        mvc.perform(upload("영상", "", List.of()).file(video).header("Authorization", owner))
+    @Test void acceptsOnlyOneVideoWithPhotoCover() throws Exception {
+        mvc.perform(upload("영상", "", List.of()).file(video()).header("Authorization", owner))
                 .andExpect(status().isBadRequest());
-        var result = json(mvc.perform(upload("영상", "", List.of()).file(video)
-                        .file(new MockMultipartFile("cover", "cover.png", "image/png", PNG)).header("Authorization", owner))
+        mvc.perform(upload("사진", "", List.of())
+                        .file(new MockMultipartFile("video", "photo.png", "image/png", PNG)).file(cover())
+                        .header("Authorization", owner))
+                .andExpect(status().isBadRequest());
+        var result = json(mvc.perform(upload("영상", "", List.of()).file(video()).file(cover())
+                        .header("Authorization", owner))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
         assertThat(result.get("media").size()).isEqualTo(1);
         assertThat(result.get("media").get(0).get("kind").asText()).isEqualTo("VIDEO");
@@ -168,9 +176,9 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
                 .andExpect(status().isBadRequest());
         mvc.perform(get(BASE + "/explore").param("snapshot", "1969-12-31T23:59:59Z"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(upload("서울" + nul, "설명", List.of()).file(photo()).header("Authorization", owner))
+        mvc.perform(upload("서울" + nul, "설명", List.of()).file(video()).file(cover()).header("Authorization", owner))
                 .andExpect(status().isBadRequest());
-        mvc.perform(upload("서울", "설명" + nul, List.of()).file(photo()).header("Authorization", owner))
+        mvc.perform(upload("서울", "설명" + nul, List.of()).file(video()).file(cover()).header("Authorization", owner))
                 .andExpect(status().isBadRequest());
         assertThat(posts.count()).isZero();
     }

@@ -33,11 +33,10 @@ public class CommunityService {
     }
 
     @Transactional
-    public PostView create(String authorization, CreateRequest request, List<MultipartFile> files, MultipartFile cover) {
+    public PostView create(String authorization, CreateRequest request, MultipartFile video, MultipartFile cover) {
         UUID authorId = auth.getCurrentUser(authorization).id();
         rejectNul(request.title());
         rejectNul(request.caption());
-        if (files == null || files.isEmpty() || files.size() > 10) throw ApiException.badRequest("사진·영상을 1~10개 첨부해주세요.");
         var tags = new LinkedHashSet<String>();
         if (request.tags() != null) request.tags().forEach(t -> tags.add(normalizeTag(t)));
         var post = new CommunityPost(authorId, request.title().strip(), request.caption() == null ? "" : request.caption().strip(), tags);
@@ -47,17 +46,15 @@ public class CommunityService {
                 if (status != STATUS_COMMITTED) written.forEach(CommunityService.this::deleteQuietly);
             }
         });
-        for (int index = 0; index < files.size(); index++) {
-            var stored = storage.store(files.get(index)); written.add(stored.storageKey());
-            post.media.add(new CommunityMedia(post, index, stored));
-        }
-        if (cover != null) {
-            var stored = storage.store(cover); written.add(stored.storageKey());
-            if (stored.kind() != MediaKind.PHOTO) throw ApiException.badRequest("표지에는 사진만 사용할 수 있습니다.");
-            post.media.add(new CommunityMedia(post, -1, stored));
-        } else if (post.media.getFirst().kind == MediaKind.VIDEO) {
-            throw ApiException.badRequest("첫 첨부가 동영상이면 그리드에 표시할 표지 사진을 함께 보내주세요.");
-        }
+        var storedVideo = storage.store(video); written.add(storedVideo.storageKey());
+        if (storedVideo.kind() != MediaKind.VIDEO)
+            throw ApiException.badRequest("커뮤니티 게시물에는 영상만 업로드할 수 있습니다.");
+        post.media.add(new CommunityMedia(post, 0, storedVideo));
+
+        var storedCover = storage.store(cover); written.add(storedCover.storageKey());
+        if (storedCover.kind() != MediaKind.PHOTO)
+            throw ApiException.badRequest("표지에는 사진만 사용할 수 있습니다.");
+        post.media.add(new CommunityMedia(post, -1, storedCover));
         posts.saveAndFlush(post);
         return view(post, users.findById(authorId).orElseThrow(() -> ApiException.notFound("작성자를 찾을 수 없습니다.")));
     }
