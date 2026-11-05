@@ -16,5 +16,8 @@ moves:
   handheld: "subtle handheld camera movement"
 # 인물 컷은 움직임을 작게 지시해 얼굴 왜곡을 줄인다.
 person_suffix: ", very subtle movement, face stays natural and undistorted"
+# 인물 사진인데 얼굴이 안 보일 때. 얼굴을 새로 만들지 않도록 자세를 고정한다.
+# 현재 워크플로는 cfg 1이라 네거티브 프롬프트가 사실상 적용되지 않으므로 여기서 지시한다.
+no_face_suffix: ", very subtle movement, head stays at the same angle and the face stays hidden exactly as in the photo, only hair and clothes move slightly"
 default_subject: "the subject"
 default_action: "gentle natural movement"

@@ -22,8 +22,14 @@ dependencies = [
     "pillow>=10.3",
     "pillow-heif>=0.16",
     "imagehash>=4.3",
-    "opencv-python-headless>=4.9",
+    # 5.0 패키지에는 pipeline/detect.py가 쓰는 cv2.CascadeClassifier가 없다.
+    "opencv-python-headless>=4.9,<5",
     "numpy>=1.26",
+    # FileResponse의 Range 요청(브라우저 영상 탐색)은 starlette 0.39부터 지원한다.
+    "fastapi>=0.115",
+    "starlette>=0.39",
+    "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]

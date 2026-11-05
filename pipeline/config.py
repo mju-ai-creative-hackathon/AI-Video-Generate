@@ -13,7 +13,7 @@ from .errors import ConfigError
 
 
 class LLMSettings(BaseModel):
-    vision_model: str = "gemma4:latest"
+    vision_model: str = "gemma4:26b"
     text_model: str = "gemma4:latest"
     temperature: float = 0.7
     num_ctx: int = 8192
@@ -82,6 +82,23 @@ class VideoSettings(BaseModel):
     negative_prompt: str = ""
 
 
+class ImageSettings(BaseModel):
+    model: str = "gemini-nano-banana-2.1"
+    image_size: str = "1K"  # 1K, 2K, 4K. 소문자 k는 거절된다
+    effects: str = "data/image_effects.yaml"
+    max_retries: int = 3
+    timeout_sec: float = 180
+
+
+class VeoSettings(BaseModel):
+    model: str = "veo-3.1-fast-generate-001"
+    resolution: str = "720p"
+    generate_audio: bool = False  # 소리는 나레이션을 쓴다
+    poll_sec: float = 15
+    timeout_sec: float = 900
+    max_retries: int = 4
+
+
 class TimingSettings(BaseModel):
     pad_sec: float = 0.25
     source_fps: int = 16
@@ -101,6 +118,7 @@ class ComposeSettings(BaseModel):
     loudness_lufs: float = -14.0
     bgm_path: str | None = None
     bgm_volume: float = 0.25
+    source_mix_volume: float = 0.3  # audio: mix에서 원본 소리의 크기
     fade_sec: float = 0.3
     font_name: str = "Pretendard"
     fonts_dir: str = "assets/fonts"
@@ -111,12 +129,43 @@ class ComposeSettings(BaseModel):
     max_chars_per_line: int = 14
 
 
+class MusicSettings(BaseModel):
+    """배경 음악. 템플릿이 음악 전용(audio.mode: music)이거나 제작 요청에 음악을 고르면 쓴다."""
+
+    library: str = "data/music.yaml"
+    music_only_volume: float = 1.0  # 나레이션 없이 음악만 쓸 때의 크기
+    fade_out_sec: float = 1.5  # 영상 끝에서 음악을 줄인다
+    min_cut_sec: float = 0.5  # 음악 전용 템플릿의 컷 최소 길이. 템플릿 길이를 그대로 따른다
+
+
+class VideoInputSettings(BaseModel):
+    """입력 영상 분석. 프레임을 뽑아 비전 모델에 보내 쓸 구간을 고른다."""
+
+    sample_every_sec: float = 2.0
+    max_frames: int = 12
+    frame_side: int = 768
+    max_cut_sec: float = 10.0
+
+
+class ApiSettings(BaseModel):
+    cors_origins: list[str] = Field(default_factory=list)
+    max_files: int = 30
+    max_file_mb: int = 500
+    max_video_sec: float = 600.0
+    url_ttl_sec: int = 3600
+    job_poll_sec: float = 2.0
+
+
 class Env(BaseSettings):
     """비밀 값과 접속 주소. 환경 변수가 .env보다 우선한다."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    api_key: str = ""
     elevenlabs_api_key: str = ""
+    gemini_api_key: str = ""
+    google_cloud_project: str = ""
+    google_cloud_location: str = "us-central1"
     database_url: str = "postgresql+psycopg://vlog:vlog@127.0.0.1:5432/vlog"
     ollama_url: str = "http://127.0.0.1:11434"
     comfyui_url: str = "http://127.0.0.1:8188"
@@ -131,8 +180,13 @@ class Settings(BaseModel):
     rag: RagSettings = Field(default_factory=RagSettings)
     tts: TTSSettings = Field(default_factory=TTSSettings)
     video: VideoSettings = Field(default_factory=VideoSettings)
+    image: ImageSettings = Field(default_factory=ImageSettings)
+    veo: VeoSettings = Field(default_factory=VeoSettings)
     timing: TimingSettings = Field(default_factory=TimingSettings)
     compose: ComposeSettings = Field(default_factory=ComposeSettings)
+    music: MusicSettings = Field(default_factory=MusicSettings)
+    video_input: VideoInputSettings = Field(default_factory=VideoInputSettings)
+    api: ApiSettings = Field(default_factory=ApiSettings)
     env: Env = Field(default_factory=Env)
 
     def resolve(self, relative: str | Path) -> Path:

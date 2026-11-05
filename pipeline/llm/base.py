@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, TypeVar
@@ -29,6 +30,11 @@ class LLMClient(ABC):
         images: list[Path] | None = None,
     ) -> str:
         """스키마에 맞는 JSON 문자열을 돌려준다."""
+
+    @contextmanager
+    def hold_models(self) -> Iterator[None]:
+        """이 구간에서는 호출마다 모델을 내리지 않는다. 끝나면 내린다. 기본은 아무것도 하지 않는다."""
+        yield
 
 
 def structured_call(

@@ -96,10 +96,15 @@ def make_storyboard_sheet(
             font=small_font,
         )
         ty += 26
+        clip = cut.source_clip
+        detail = (
+            f"영상 {clip.in_sec:.1f}~{clip.out_sec:.1f}초 / 소리: {clip.audio}"
+            if clip
+            else f"{cut.shot.shot_size} / {cut.shot.camera_move}"
+        )
         draw.text(
             (x, ty),
-            f"{cut.shot.shot_size} / {cut.shot.camera_move} / 크롭 {cut.shot.crop_choice}"
-            f" ({cut.crop_source})",
+            f"{detail} / 크롭 {cut.shot.crop_choice} ({cut.crop_source})",
             fill=MUTED,
             font=small_font,
         )

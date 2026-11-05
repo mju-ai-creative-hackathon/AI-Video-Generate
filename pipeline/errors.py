@@ -65,7 +65,23 @@ class ReapprovalRequiredError(VlogError):
     """렌더링 중 사람의 재승인이 필요한 변경이 생긴 경우 (나레이션 길이 초과 등)."""
 
 
+class JobConflictError(VlogError):
+    """같은 실행에 진행 중인 작업이 있어 새 작업이나 수정을 받을 수 없는 경우."""
+
+
+class UploadRejectedError(VlogError):
+    """지원하지 않거나 내용을 읽을 수 없는 업로드."""
+
+
+class UploadTooLargeError(VlogError):
+    """업로드 용량이나 개수 제한을 넘은 경우."""
+
+
 class TTSError(VlogError):
+    pass
+
+
+class ImageError(VlogError):
     pass
 
 

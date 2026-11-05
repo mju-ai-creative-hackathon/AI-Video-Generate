@@ -1,0 +1,251 @@
+# 임시 템플릿. "특정 영상을 옮겨 적지 않는다"는 계획의 예외로, 사용자 요청에 따라 만들었다.
+# 참고 영상: instagram.com/reels/DXg0cdxSImO (2026-11-06 분석). 컷 구조만 옮겼고 원본 문장은 넣지 않았다.
+# 원본은 81.6초, 30컷, 6일 구성. 컷 경계는 ffmpeg 장면 감지, 나머지는 컷별 프레임을 보고 판단했다(소리는 듣지 않음).
+# 슬롯 순서가 원본 순서다. 사진이 적으면 선택 슬롯(repeat min 0)부터 빠지고 8컷까지 줄어든다.
+# 재현하지 못한 것: 2초 미만 컷 8개(2초로 늘림), 화면 중앙의 시각 표시, 작은 보조 자막, 얼굴 스티커,
+#   영상 내내 고정된 날짜 표시(컷별 화면 문구로 대체), 컷 #12의 암전 전환, 실제 손떨림 촬영 느낌.
+# 원본의 공부·시험 내용은 사용자 요청에 따라 여행으로 바꿨다. 컷 수, 길이, 순서는 원본 구조 그대로다.
+format_id: reel_exam_diary_temp_v1
+name: 일기
+hook_type: 상황 제시형
+total_sec: {min: 25, max: 90}
+slots:
+  # 원본 #1: 큰 제목을 얹은 전신 사진
+  - slot: hook
+    role: hook
+    sec: {min: 2.5, max: 3.5}
+    photo_need:
+      prefer: [인물, 사물]
+      moods: []
+    shot_options:
+      - {size: wide, move: static}
+      - {size: medium, move: static}
+    narration: {goal: "어떤 기간을 기록한 영상인지 한 문장으로 알림", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #2
+  - slot: intro
+    role: body
+    sec: {min: 3.5, max: 5.0}
+    photo_need:
+      prefer: [인물]
+      moods: []
+    shot_options:
+      - {size: medium, move: handheld}
+      - {size: wide, move: handheld}
+    narration: {goal: "첫날의 상황과 앞으로 할 일을 가볍게 소개. 화면 문구는 DAY 1처럼 날짜 표시만", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #3, #4, #6: 손에 든 음료·물건을 짧게
+  - slot: day1_snack
+    role: body
+    repeat: {min: 1, max: 3}
+    sec: {min: 2.0, max: 2.5}
+    photo_need:
+      prefer: [음식, 사물]
+      moods: []
+    shot_options:
+      - {size: close_up, move: handheld}
+      - {size: detail, move: handheld}
+    narration: {goal: "여행 전에 챙긴 것을 짧게 말함. 화면 문구는 DAY 1", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #5, #9: 계단·거울 앞 전신
+  - slot: day1_selfie
+    role: body
+    required: false
+    repeat: {min: 0, max: 2}
+    sec: {min: 2.0, max: 2.5}
+    photo_need:
+      prefer: [인물]
+      moods: []
+    shot_options:
+      - {size: wide, move: static}
+      - {size: wide, move: handheld}
+    narration: {goal: "지금 기분이나 다짐을 한마디. 화면 문구는 DAY 1", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #7, #8, #10 자리: 첫 여행지
+  - slot: day1_spot
+    role: body
+    repeat: {min: 1, max: 3}
+    sec: {min: 2.5, max: 3.0}
+    photo_need:
+      prefer: [풍경, 실내]
+      moods: []
+    shot_options:
+      - {size: wide, move: pan_right}
+      - {size: medium, move: handheld}
+      - {size: wide, move: slow_push_in}
+    narration: {goal: "처음 도착한 곳의 첫인상을 짧게. 화면 문구는 DAY 1", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #11, #12
+  - slot: day2_break
+    role: body
+    required: false
+    repeat: {min: 0, max: 2}
+    sec: {min: 2.0, max: 2.6}
+    photo_need:
+      prefer: [인물, 음식]
+      moods: []
+    shot_options:
+      - {size: medium, move: handheld}
+      - {size: close_up, move: static}
+    narration: {goal: "둘째 날의 장소나 여행하며 지치는 마음을 솔직하게. 화면 문구는 DAY 2", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #13
+  - slot: day2_spot
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 4.0, max: 5.0}
+    photo_need:
+      prefer: [풍경, 사물]
+      moods: []
+    shot_options:
+      - {size: wide, move: static}
+      - {size: medium, move: slow_push_in}
+    narration: {goal: "구경하다 눈길을 끈 것을 말함. 화면 문구는 DAY 2", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #14
+  - slot: day3_spot
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 3.5, max: 4.5}
+    photo_need:
+      prefer: [풍경, 음식]
+      moods: []
+    shot_options:
+      - {size: wide, move: static}
+      - {size: medium, move: slow_push_in}
+    narration: {goal: "셋째 날의 일정이나 컨디션을 한 문장으로. 화면 문구는 DAY 3", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #15
+  - slot: day4_spot
+    role: body
+    sec: {min: 3.5, max: 4.0}
+    photo_need:
+      prefer: [풍경, 실내]
+      moods: []
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: medium, move: static}
+    narration: {goal: "다시 길을 나선 아침을 말함. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #16
+  - slot: day4_snack
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 2.2, max: 2.8}
+    photo_need:
+      prefer: [음식]
+      moods: []
+    shot_options:
+      - {size: close_up, move: handheld}
+    narration: {goal: "손에 든 음료를 보며 발걸음이 느려지는 이유를 농담처럼. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #17, #18: 움직임이 큰 장난스러운 컷
+  - slot: day4_move
+    role: body
+    required: false
+    repeat: {min: 0, max: 2}
+    sec: {min: 2.0, max: 3.0}
+    photo_need:
+      prefer: [인물, 실내]
+      moods: []
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: medium, move: handheld}
+    narration: {goal: "자리를 옮기며 스스로에게 하는 장난스러운 한마디. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #19, #20
+  - slot: day4_view
+    role: body
+    required: false
+    repeat: {min: 0, max: 2}
+    sec: {min: 2.0, max: 2.2}
+    photo_need:
+      prefer: [풍경, 인물]
+      moods: []
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: medium, move: static}
+    narration: {goal: "풍경을 보며 드는 생각을 짧게. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #21, #22
+  - slot: day5_spot
+    role: body
+    required: false
+    repeat: {min: 0, max: 2}
+    sec: {min: 2.0, max: 2.5}
+    photo_need:
+      prefer: [풍경]
+      moods: []
+    shot_options:
+      - {size: wide, move: static}
+      - {size: wide, move: pan_left}
+    narration: {goal: "늦은 시간까지 이어진 여행을 짧게. 화면 문구는 DAY 5", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #23
+  - slot: day5_break
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 2.8, max: 3.2}
+    photo_need:
+      prefer: [사물, 풍경]
+      moods: [설렘, 활기]
+    shot_options:
+      - {size: close_up, move: pan_right}
+      - {size: medium, move: slow_push_in}
+    narration: {goal: "다음 일정을 기대하며 힘을 내는 마음. 화면 문구는 DAY 5", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #24~#27 자리: 마지막 날의 일정을 잇는 컷
+  - slot: day6_spot
+    role: body
+    repeat: {min: 1, max: 4}
+    sec: {min: 2.2, max: 4.2}
+    photo_need:
+      prefer: [풍경, 음식]
+      moods: []
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: medium, move: handheld}
+    narration: {goal: "여행 마지막 날의 일정을 차례로 전함. 화면 문구는 DAY 6", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #28: 끝난 뒤의 보상
+  - slot: day6_relief
+    role: body
+    sec: {min: 3.5, max: 4.2}
+    photo_need:
+      prefer: [음식]
+      moods: [따뜻함, 잔잔함]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: detail, move: handheld}
+    narration: {goal: "여행을 마무리하며 먹은 것을 말함. 화면 문구는 DAY 6", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #29
+  - slot: day6_fun
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 2.5, max: 3.0}
+    photo_need:
+      prefer: [실내, 사물]
+      moods: [활기, 설렘]
+    shot_options:
+      - {size: medium, move: static}
+      - {size: wide, move: handheld}
+    narration: {goal: "그날 밤 즐긴 것으로 여행의 아쉬움과 즐거움을 표현. 화면 문구는 DAY 6", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  # 원본 #30: 날짜 표시 없이 인사
+  - slot: ending
+    role: ending
+    sec: {min: 3.5, max: 4.0}
+    photo_need:
+      prefer: [인물]
+      moods: []
+    shot_options:
+      - {size: medium, move: static}
+      - {size: wide, move: static}
+    narration: {goal: "기간을 돌아보며 다음을 기약하는 인사", chars_per_sec: 5.5}
+    text: {use: none, position: top}

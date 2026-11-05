@@ -1,0 +1,114 @@
+# 임시 템플릿. "특정 영상을 옮겨 적지 않는다"는 계획의 예외로, 사용자 요청에 따라 만들었다.
+# 참고 영상: instagram.com/reels/DVf0_IsCSL7 (2026-11-05 분석). 컷 구조만 옮겼고 원본 문장은 넣지 않았다.
+# 원본은 약 52초, 효과를 뺀 컷 12개. Wan 한도(약 6초)와 최소 컷 길이(2초)에 맞춰 길이를 조정했다.
+# 재현하지 못한 것: 끝의 하트 효과, 불꽃·네온 글자 효과, 12.9초 컷(5.5초로 줄임), 2초 미만 컷.
+format_id: reel_day_pov_temp_v1
+name: 하루 1인칭 기록 (임시, 릴스 구조 참고)
+hook_type: 상황 제시형
+total_sec: {min: 40, max: 55}
+slots:
+  - slot: hook
+    role: hook
+    sec: {min: 3.0, max: 5.0}
+    photo_need:
+      prefer: [풍경, 실내, 인물]
+      moods: [활기, 설렘]
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: medium, move: handheld}
+    narration: {goal: "오늘이 어떤 날인지 짧게 던지며 시작", chars_per_sec: 5.5}
+    text: {use: required, position: top}
+  - slot: commute
+    role: body
+    repeat: {min: 1, max: 2}
+    sec: {min: 2.5, max: 4.0}
+    photo_need:
+      prefer: [풍경, 인물]
+      moods: []
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: wide, move: pan_right}
+    narration: {goal: "이동 중의 상황을 가볍게 불평하거나 중계", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: decision
+    role: body
+    sec: {min: 4.0, max: 5.5}
+    photo_need:
+      prefer: [사물, 실내]
+      moods: []
+    shot_options:
+      - {size: close_up, move: static}
+      - {size: medium, move: slow_push_in}
+    narration: {goal: "오늘 뭘 할지 또는 뭘 먹을지 고르는 순간", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: treat
+    role: body
+    repeat: {min: 1, max: 2}
+    sec: {min: 3.5, max: 5.5}
+    photo_need:
+      prefer: [음식, 사물]
+      moods: [따뜻함, 잔잔함, 설렘]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: detail, move: pan_right}
+    narration: {goal: "고른 결과를 보여주며 사진 속 디테일 하나를 말함", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: pause
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 2.5, max: 3.5}
+    photo_need:
+      prefer: [사물, 실내]
+      moods: [잔잔함]
+    shot_options:
+      - {size: medium, move: static}
+    narration: {goal: "잠깐 쉬어가는 순간을 짧게", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: meal
+    role: body
+    repeat: {min: 1, max: 2}
+    sec: {min: 3.0, max: 4.0}
+    photo_need:
+      prefer: [음식]
+      moods: []
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: detail, move: handheld}
+    narration: {goal: "눈앞의 음식에 대한 솔직한 감상", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: mishap
+    role: body
+    required: false
+    repeat: {min: 0, max: 1}
+    sec: {min: 3.0, max: 4.0}
+    photo_need:
+      prefer: [실내, 인물]
+      moods: []
+    shot_options:
+      - {size: medium, move: handheld}
+    narration: {goal: "그날의 소소한 난처함을 자조 섞어 한마디", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: way_home
+    role: body
+    repeat: {min: 1, max: 3}
+    sec: {min: 2.0, max: 4.0}
+    photo_need:
+      prefer: [풍경]
+      moods: []
+    shot_options:
+      - {size: wide, move: handheld}
+      - {size: medium, move: handheld}
+    narration: {goal: "돌아가는 길의 풍경과 지친 기분", chars_per_sec: 5.5}
+    text: {use: optional, position: top}
+  - slot: ending
+    role: ending
+    sec: {min: 2.5, max: 4.5}
+    photo_need:
+      prefer: [실내, 사물]
+      moods: [잔잔함, 따뜻함]
+    shot_options:
+      - {size: close_up, move: slow_push_in}
+      - {size: wide, move: pull_out}
+    narration: {goal: "집에 돌아온 안도감을 한 문장으로 마무리", chars_per_sec: 5.5}
+    text: {use: required, position: top}

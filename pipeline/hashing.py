@@ -26,17 +26,53 @@ def clip_visual_key(
     seed: int,
     camera_move: str,
     size: tuple[int, int],
+    styled_image: str | None = None,
 ) -> str:
     """프레임 수를 뺀 영상 입력. 나레이션이 짧아졌을 때 기존 영상을 다시 쓰는 판단에 쓴다."""
+    payload = {
+        "provider": provider,
+        "photo": photo_sha256,
+        "crop": [round(v, 4) for v in crop_box],
+        "prompt": prompt,
+        "seed": seed,
+        "move": camera_move,
+        "size": list(size),
+    }
+    # 효과가 없는 컷은 값을 넣지 않아 기존 실행의 해시가 그대로 유지된다.
+    if styled_image is not None:
+        payload["styled_image"] = styled_image
+    return stable_hash(payload)
+
+
+def image_input_hash(
+    *,
+    photo_sha256: str,
+    crop_box: list[float],
+    prompt: str,
+    provider: dict[str, Any],
+    attempt: int,
+) -> str:
     return stable_hash(
         {
-            "provider": provider,
             "photo": photo_sha256,
             "crop": [round(v, 4) for v in crop_box],
             "prompt": prompt,
-            "seed": seed,
-            "move": camera_move,
-            "size": list(size),
+            "provider": provider,
+            "attempt": attempt,
+        }
+    )
+
+
+def source_clip_hash(
+    *, video_sha256: str, in_sec: float, out_sec: float, crop_box: list[float]
+) -> str:
+    """원본 영상 컷의 입력. 구간이나 크롭이 바뀌면 합성을 다시 한다."""
+    return stable_hash(
+        {
+            "source_video": video_sha256,
+            "in": round(in_sec, 3),
+            "out": round(out_sec, 3),
+            "crop": [round(v, 4) for v in crop_box],
         }
     )
 

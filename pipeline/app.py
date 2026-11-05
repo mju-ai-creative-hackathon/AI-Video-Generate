@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -14,8 +15,12 @@ from .compose import FFmpegComposer
 from .config import Settings, load_settings
 from .db.repo import make_session_factory
 from .detect import OpenCVFaceDetector
+from .effects import ImageEffects
 from .errors import ConfigError
 from .format_match import FormatTemplate, load_formats
+from .music import MusicLibrary
+from .image.base import ImageProvider
+from .image.nanobanana import NanoBananaImage
 from .llm.base import LLMClient
 from .llm.ollama import OllamaLLM
 from .plan import PlanPipeline
@@ -30,6 +35,7 @@ from .tts.silent import SilentTTS
 from .video.base import VideoProvider
 from .video.comfyui import ComfyUIVideo
 from .video.kenburns import KenBurnsVideo
+from .video.veo import VeoVideo
 
 
 @dataclass
@@ -56,6 +62,14 @@ class App:
     @cached_property
     def presets(self) -> MotionPresets:
         return MotionPresets.load(self.settings.resolve(self.settings.storyboard.motion_presets))
+
+    @cached_property
+    def effects(self) -> ImageEffects:
+        return ImageEffects.load(self.settings.resolve(self.settings.image.effects))
+
+    @cached_property
+    def music(self) -> MusicLibrary:
+        return MusicLibrary.load(self.settings.resolve(self.settings.music.library), self.settings.root)
 
     @cached_property
     def planner(self) -> CropPlanner:
@@ -85,9 +99,11 @@ class App:
             self.planner,
             self.presets,
             generator_factory=self.generator,
+            effects=self.effects,
+            music=self.music,
         )
 
-    def plan_pipeline(self) -> PlanPipeline:
+    def plan_pipeline(self, progress: Callable[[str], None] | None = None) -> PlanPipeline:
         return PlanPipeline(
             self.factory,
             self.settings,
@@ -95,6 +111,7 @@ class App:
             self.generator(),
             self.service,
             OpenCVFaceDetector(),
+            progress,
         )
 
     def make_tts(self, provider: str | None = None) -> TTSProvider:
@@ -113,16 +130,31 @@ class App:
                 self.settings.video,
                 self.settings.resolve(self.settings.video.workflow),
             )
+        if name == "veo":
+            env = self.settings.env
+            return VeoVideo(
+                env.google_cloud_project,
+                env.google_cloud_location,
+                self.settings.veo,
+                self.settings.video.negative_prompt,
+            )
         if name == "kenburns":
             return self.make_kenburns()
-        raise ConfigError(f"지원하지 않는 영상 어댑터입니다: {name} (comfyui, kenburns)")
+        raise ConfigError(f"지원하지 않는 영상 어댑터입니다: {name} (comfyui, veo, kenburns)")
 
     def make_kenburns(self) -> VideoProvider:
         cfg = self.settings.compose
         return KenBurnsVideo((cfg.width, cfg.height), cfg.fps)
 
+    def make_image(self) -> ImageProvider:
+        return NanoBananaImage(self.settings.env.gemini_api_key, self.settings.image)
+
     def render_pipeline(
-        self, *, tts: str | None = None, video: str | None = None
+        self,
+        *,
+        tts: str | None = None,
+        video: str | None = None,
+        progress: Callable[[str], None] | None = None,
     ) -> RenderPipeline:
         # 승인 관문을 통과하기 전에는 어댑터를 만들지 않도록 팩토리로 넘긴다.
         return RenderPipeline(
@@ -133,4 +165,8 @@ class App:
             video_factory=lambda: self.make_video(video),
             fallback_factory=self.make_kenburns,
             composer=FFmpegComposer(self.settings.compose, self.settings.root),
+            progress=progress,
+            image_factory=self.make_image,
+            effects=self.effects,
+            music=self.music,
         )

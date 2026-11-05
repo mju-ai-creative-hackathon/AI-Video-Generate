@@ -30,6 +30,12 @@ app.add_typer(storyboard_app, name="storyboard")
 app.add_typer(corpus_app, name="corpus")
 
 console = Console()
+
+
+def _progress(message: str) -> None:
+    console.print(escape(message), highlight=False)
+
+
 ConfigOption = Annotated[Path, typer.Option("--config", help="설정 파일 경로")]
 DEFAULT_CONFIG = Path("config.yaml")
 
@@ -101,13 +107,20 @@ def plan(
     memo: Annotated[str | None, typer.Option(help="영상에 반영할 메모")] = None,
     format_id: Annotated[str | None, typer.Option("--format", help="포맷 직접 지정")] = None,
     resume: Annotated[str | None, typer.Option(help="중단된 run_id 이어서 실행")] = None,
+    order: Annotated[
+        str, typer.Option(help="time: 촬영 시각순, number: 파일 이름 번호순으로 전부 사용")
+    ] = "time",
     config: ConfigOption = DEFAULT_CONFIG,
 ) -> None:
     """사진을 분석해 AI 초안을 저장하고 멈춘다. TTS와 영상 생성은 하지 않는다."""
     if photos is None and resume is None:
         raise VlogError("사진 폴더나 --resume을 지정하세요.")
+    if order not in ("time", "number"):
+        raise VlogError(f"--order는 time 또는 number여야 합니다: {order}")
     context = App.load(config)
-    result = context.plan_pipeline().run(photos, memo, format_id=format_id, resume_run_id=resume)
+    result = context.plan_pipeline(_progress).run(
+        photos, memo, format_id=format_id, resume_run_id=resume, order=order
+    )
     console.print(f"run_id: [bold]{result.run_id}[/bold], 초안 v{result.version} 저장")
     for photo_id, reason in result.excluded:
         console.print(f"  제외된 사진 {photo_id}: {reason}")
@@ -246,7 +259,7 @@ def storyboard_versions(run_id: str, config: ConfigOption = DEFAULT_CONFIG) -> N
 
 
 # ── render ────────────────────────────────────────────────────────────────
-VideoOption = Annotated[str | None, typer.Option("--video", help="comfyui 또는 kenburns")]
+VideoOption = Annotated[str | None, typer.Option("--video", help="comfyui, veo 또는 kenburns")]
 TTSOption = Annotated[str | None, typer.Option("--tts", help="elevenlabs 또는 silent")]
 
 
@@ -254,7 +267,10 @@ def _print_render(result: Any) -> None:
     console.print(f"완성본: {result.video_path}", highlight=False)
     if result.reused_video:
         console.print("  입력이 같아 기존 완성본을 재사용했습니다.")
-    console.print(f"  TTS 생성 {len(result.tts_generated)}컷, 영상 생성 {len(result.clips_generated)}컷")
+    console.print(
+        f"  이미지 생성 {len(result.images_generated)}컷, TTS 생성 {len(result.tts_generated)}컷, "
+        f"영상 생성 {len(result.clips_generated)}컷"
+    )
     if result.fallback_cuts:
         console.print(f"  [yellow]Ken Burns로 대체된 컷: {result.fallback_cuts}[/yellow]")
     if result.contact_sheet:
@@ -270,7 +286,28 @@ def render(
     config: ConfigOption = DEFAULT_CONFIG,
 ) -> None:
     """승인된 스토리보드로 TTS, 영상 생성, 합성, 저장을 실행한다."""
-    _print_render(App.load(config).render_pipeline(tts=tts, video=video).run(run_id))
+    pipeline = App.load(config).render_pipeline(tts=tts, video=video, progress=_progress)
+    _print_render(pipeline.run(run_id))
+
+
+@app.command()
+@_friendly
+def images(
+    run_id: str,
+    cut: Annotated[str | None, typer.Option("--cut", help="이 컷만. 생략하면 effect가 있는 전체")] = None,
+    again: Annotated[bool, typer.Option("--again", help="--cut의 이미지를 새로 만든다")] = False,
+    config: ConfigOption = DEFAULT_CONFIG,
+) -> None:
+    """승인된 스토리보드의 효과 이미지만 만든다. 영상 요금을 쓰기 전에 결과를 확인한다."""
+    if again and cut is None:
+        raise VlogError("--again은 --cut과 함께 쓰세요.")
+    pipeline = App.load(config).render_pipeline(progress=_progress)
+    results = pipeline.make_images(run_id, cut_id=cut, again=again)
+    if not results:
+        console.print("effect가 있는 컷이 없습니다.")
+    for item, asset in results:
+        state = "새로 만듦" if asset.generated else "재사용"
+        console.print(f"{item.cut_id} {escape(item.effect or '')} ({state}): {asset.path}", highlight=False)
 
 
 @app.command()
@@ -284,8 +321,47 @@ def regen(
     config: ConfigOption = DEFAULT_CONFIG,
 ) -> None:
     """특정 컷의 영상만 다시 만들고 합성한다."""
-    pipeline = App.load(config).render_pipeline(tts=tts, video=video)
+    pipeline = App.load(config).render_pipeline(tts=tts, video=video, progress=_progress)
     _print_render(pipeline.regen_clip(run_id, cut, seed))
+
+
+# ── API 서버 ──────────────────────────────────────────────────────────────
+@app.command()
+@_friendly
+def serve(
+    host: Annotated[str, typer.Option(help="LAN에 열려면 이 PC의 IP 또는 0.0.0.0")] = "127.0.0.1",
+    port: Annotated[int, typer.Option()] = 8000,
+    config: ConfigOption = DEFAULT_CONFIG,
+) -> None:
+    """프론트가 호출할 API 서버를 실행한다. 작업자가 하나라 프로세스도 하나만 띄운다."""
+    import uvicorn
+
+    from .api.app import create_app
+    from .api.security import is_loopback
+
+    settings = App.load(config).settings
+    if not is_loopback(host) and not settings.env.api_key:
+        raise VlogError(
+            f"{host}로 열려면 .env에 API_KEY를 넣으세요. 인증 없이 네트워크에 열 수 없습니다."
+        )
+    uvicorn.run(create_app(config), host=host, port=port, workers=1)
+
+
+@app.command()
+@_friendly
+def openapi(
+    out: Annotated[Path, typer.Option(help="저장 경로")] = Path("docs/openapi.json"),
+    config: ConfigOption = DEFAULT_CONFIG,
+) -> None:
+    """프론트 팀원에게 줄 API 명세를 저장한다. DB나 작업자는 쓰지 않는다."""
+    import json
+
+    from .api.app import create_app
+
+    schema = create_app(config, start_worker=False).openapi()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")
+    console.print(f"저장: {out}", highlight=False)
 
 
 # ── 조회와 점검 ───────────────────────────────────────────────────────────
@@ -336,6 +412,9 @@ def doctor(config: ConfigOption = DEFAULT_CONFIG) -> None:
             line(False, name, url)
     line(bool(env.elevenlabs_api_key), "ELEVENLABS_API_KEY")
     line(bool(context.settings.tts.voice_id), "tts.voice_id")
+    line(bool(env.gemini_api_key), "GEMINI_API_KEY", "(effect 컷에 필요)")
+    line(bool(env.google_cloud_project), "GOOGLE_CLOUD_PROJECT", "(--video veo에 필요)")
+    line(bool(shutil.which("gcloud")), "gcloud", "(--video veo에 필요)")
 
     report = check_consistency(context.factory, context.settings)
     console.print(f"완성본 {report.checked}개 대조")

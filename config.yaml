@@ -2,10 +2,11 @@
 storage_dir: storage
 
 llm:
-  # 이 PC에 설치된 모델을 쓴다. /api/show 기준 vision·thinking 지원, Apache 라이선스.
-  # gemma4:latest(8.0B, 9.6GB)는 VRAM 16GB에 들어간다. gemma4:26b(17GB)는 VRAM을 넘어 일부가 RAM으로 간다.
-  # 대본 모델은 M2 비교로 확정한다. 후보: exaone3.5:7.8b(비상업 라이선스), gemma4:26b
-  vision_model: gemma4:latest
+  # 이 PC에 설치된 모델을 쓴다. Apache 라이선스.
+  # gemma4:latest는 Ollama 0.30.10에서 사진을 제대로 보지 못해(빨간 단색을 "Black"으로 답함, 2026-11-05)
+  # 사진 분석에 쓰지 않는다. gemma4:26b는 정상이지만 17GB라 VRAM 16GB를 넘어 일부가 RAM으로 간다.
+  vision_model: gemma4:26b
+  # 대본 모델은 M2 비교로 확정한다. 후보: gemma4:26b, exaone3.5:7.8b(비상업 라이선스)
   text_model: gemma4:latest
   temperature: 0.7
   num_ctx: 8192
@@ -45,7 +46,7 @@ rag:
 
 tts:
   provider: elevenlabs
-  voice_id: ""            # M3 한국어 비교 후 확정
+  voice_id: "QAmlwgbPtjxpk7u98Qs9"            # M3 한국어 비교 후 확정
   model_id: eleven_multilingual_v2
   output_format: mp3_44100_128
   stability: 0.5
@@ -77,6 +78,23 @@ video:
     rife: rife49.pth
   negative_prompt: "blurry, distorted face, deformed hands, extra fingers, text, watermark, low quality"
 
+# storyboard.yaml에서 effect를 지정한 컷만 나노바나나로 다시 그린다.
+image:
+  model: gemini-nano-banana-2.1
+  image_size: 1K          # 1K, 2K, 4K (대문자 K)
+  effects: data/image_effects.yaml
+  max_retries: 3
+  timeout_sec: 180
+
+# `--video veo`일 때 사용. Google Cloud 프로젝트와 gcloud 로그인이 필요하다.
+veo:
+  model: veo-3.1-fast-generate-001   # 고품질: veo-3.1-generate-001
+  resolution: 720p        # 720p, 1080p
+  generate_audio: false   # 소리는 나레이션을 쓴다
+  poll_sec: 15
+  timeout_sec: 900
+  max_retries: 4
+
 timing:
   pad_sec: 0.25
   source_fps: 16
@@ -95,11 +113,37 @@ compose:
   loudness_lufs: -14.0
   bgm_path: null          # 라이선스를 확보한 파일만 지정
   bgm_volume: 0.25
+  source_mix_volume: 0.3  # audio: mix에서 원본 소리의 크기
   fade_sec: 0.3
-  font_name: Pretendard   # fonts_dir에 없으면 Malgun Gothic으로 대체
+  font_name: Pretendard-Bold   # fonts_dir에 없으면 Malgun Gothic으로 대체
   fonts_dir: assets/fonts
-  narration_font_size: 64
+  narration_font_size: 65
   emphasis_font_size: 88
   narration_margin_ratio: 0.30   # 플랫폼 UI를 피해 하단 약 30% 위에 배치
   emphasis_margin_ratio: 0.14
   max_chars_per_line: 14
+
+# 배경 음악. 곡 목록은 data/music.yaml, 파일은 assets/music/ (git 제외).
+# 템플릿이 audio.mode: music이면 나레이션 없이 음악만 넣고, 컷 길이는 템플릿을 따른다.
+# 나레이션 템플릿에 음악을 고르면 나레이션 구간에서 줄어드는 배경 음악(bgm_volume)으로 쓴다.
+music:
+  library: data/music.yaml
+  music_only_volume: 1.0
+  fade_out_sec: 1.5
+  min_cut_sec: 0.5
+
+# 입력 영상에서 프레임을 뽑아 비전 모델이 쓸 구간을 고른다.
+video_input:
+  sample_every_sec: 2.0
+  max_frames: 12
+  frame_side: 768
+  max_cut_sec: 10.0       # AI가 고르는 구간의 최대 길이. 프론트에서 직접 늘릴 수 있다
+
+# `vlog serve` 설정. 인증 키는 .env의 API_KEY에 둔다.
+api:
+  cors_origins: []        # 프론트 주소. 예: ["http://192.168.0.10:5173"]
+  max_files: 30
+  max_file_mb: 500
+  max_video_sec: 600
+  url_ttl_sec: 3600       # 사진·영상 URL의 유효 시간
+  job_poll_sec: 2.0

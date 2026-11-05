@@ -9,3 +9,6 @@ __pycache__/
 data/raw/
 storage/
 *.db
+
+# 배경 음악 파일(라이선스별로 재배포가 안 될 수 있다)
+assets/music/

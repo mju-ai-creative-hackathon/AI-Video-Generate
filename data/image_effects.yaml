@@ -1,0 +1,35 @@
+# 컷 이미지 효과. storyboard.yaml의 effect에 이름을 적으면 그 컷만 나노바나나로 다시 그린다.
+# effect를 비워 두면 원본 사진을 그대로 쓰고 이미지 API를 호출하지 않는다.
+# 공백이 들어간 영어 문장을 적으면 목록에 없는 효과로 보고 그 문장을 그대로 지시한다.
+#
+# image: 나노바나나에 보낼 지시
+# video: 영상 프롬프트 뒤에 덧붙일 지시. 움직임이 효과와 어긋나지 않게 한다.
+base: "Edit this photo. Keep the same composition, framing, subjects and objects. Do not add new people, text, logos or watermarks."
+person_face: "Keep every person's face, identity, age and expression unchanged."
+# 사진에 얼굴이 안 보이는 인물 컷. 효과를 입히면서 얼굴을 새로 만들지 않도록 한다.
+face_hidden: "The person's face is not visible in this photo. Keep their pose and head angle exactly as they are. Do not turn their head, and do not draw or reveal a face."
+effects:
+  film_look:
+    image: "Give it the look of 35mm analog film: soft contrast, gentle grain, slightly faded warm colors."
+    video: "analog film look with subtle grain"
+  golden_hour:
+    image: "Relight the scene as golden hour: low warm sunlight, long soft shadows, a warm glow on the edges of subjects."
+    video: "warm golden hour light, gently shifting sunlight"
+  blue_hour:
+    image: "Relight the scene as blue hour just after sunset: cool blue ambient light with warm lights glowing where they would naturally be."
+    video: "calm blue hour light, lights softly glowing"
+  night_neon:
+    image: "Turn the scene into night with colorful neon reflections on nearby surfaces, keeping the subjects clearly visible."
+    video: "neon reflections slowly flickering"
+  rain:
+    image: "Make it rain: visible fine raindrops, wet reflective surfaces, soft overcast light."
+    video: "rain falling steadily, raindrops rippling on wet surfaces"
+  snow:
+    image: "Make it snow lightly: falling snowflakes, a thin layer of snow on outdoor surfaces, soft winter light. Leave indoor areas without snow."
+    video: "snowflakes drifting down slowly"
+  watercolor:
+    image: "Repaint the whole image as a soft watercolor painting with visible paper texture and gentle color bleeding."
+    video: "keep the hand-painted watercolor style in every frame"
+  illustration:
+    image: "Redraw the whole image as a clean hand-drawn illustration with soft outlines and flat, warm colors."
+    video: "keep the hand-drawn illustration style in every frame"

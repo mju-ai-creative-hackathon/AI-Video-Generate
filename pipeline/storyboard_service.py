@@ -15,13 +15,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import Settings
+from .effects import ImageEffects
 from .db.models import (
     RUN_APPROVED,
     RUN_REVIEW,
@@ -48,13 +49,26 @@ from .schemas import (
     EditFile,
     PhotoRecord,
     ShotDesign,
+    SourceClip,
     Storyboard,
+    default_source_clip,
     new_cut_id,
 )
 from .storyboard import MotionPresets, StoryboardGenerator, apply_crop_plan
-from .validation import ValidationReport, validate_storyboard
+from .music import MusicLibrary, MusicTrack
+from .validation import ValidationReport, music_problem, validate_storyboard
 
-CUT_FIELDS = ("position", "photo_id", "role", "narration", "target_sec", "motion_prompt", "locked")
+CUT_FIELDS = (
+    "position",
+    "photo_id",
+    "role",
+    "narration",
+    "target_sec",
+    "motion_prompt",
+    "effect",
+    "source_clip",
+    "locked",
+)
 SHOT_FIELDS = (
     "shot_size",
     "camera_move",
@@ -97,10 +111,17 @@ class ApprovedStoryboard:
     storyboard: Storyboard
 
 
+def _plain(value: Any) -> Any:
+    """수정 기록은 JSON으로 저장되므로 모델을 일반 값으로 바꾼다."""
+    return value.model_dump(mode="json") if isinstance(value, BaseModel) else value
+
+
 def diff_storyboards(old: Storyboard, new: Storyboard) -> list[FieldChange]:
     changes: list[FieldChange] = []
     if old.title != new.title:
         changes.append(FieldChange(None, "title", old.title, new.title))
+    if old.music_id != new.music_id:
+        changes.append(FieldChange(None, "music_id", old.music_id, new.music_id))
     old_cuts = {c.cut_id: c for c in old.cuts}
     new_cuts = {c.cut_id: c for c in new.cuts}
     for cut_id, cut in old_cuts.items():
@@ -114,7 +135,7 @@ def diff_storyboards(old: Storyboard, new: Storyboard) -> list[FieldChange]:
         for name in CUT_FIELDS:
             a, b = getattr(before, name), getattr(cut, name)
             if a != b:
-                changes.append(FieldChange(cut_id, name, a, b))
+                changes.append(FieldChange(cut_id, name, _plain(a), _plain(b)))
         for name in SHOT_FIELDS:
             a, b = getattr(before.shot, name), getattr(cut.shot, name)
             if a != b:
@@ -132,6 +153,8 @@ class StoryboardService:
         presets: MotionPresets,
         *,
         generator_factory: Callable[[], StoryboardGenerator] | None = None,
+        effects: ImageEffects | None = None,
+        music: MusicLibrary | None = None,
     ) -> None:
         self.factory = factory
         self.settings = settings
@@ -139,6 +162,8 @@ class StoryboardService:
         self.planner = planner
         self.presets = presets
         self.generator_factory = generator_factory
+        self.effects = effects
+        self.music = music
 
     # ── 조회 ──────────────────────────────────────────────────────────────
     def get_storyboard(self, run_id: str, version: int | None = None) -> tuple[int, Storyboard]:
@@ -162,12 +187,72 @@ class StoryboardService:
         _, storyboard = self.get_storyboard(run_id, version)
         return self._validate(storyboard, self.photos(run_id))
 
+    def to_view(self, run_id: str, version: int | None = None) -> dict[str, Any]:
+        """프론트에 줄 스토리보드. 수정할 값과 표시용 값을 함께 담는다."""
+        number, storyboard = self.get_storyboard(run_id, version)
+        photos = self.photos(run_id)
+        by_photo = {p.photo_id: p for p in photos}
+        report = self._validate(storyboard, photos)
+        with session_scope(self.factory) as session:
+            repo = Repo(session)
+            row = repo.get_version(run_id, number)
+            latest = repo.latest_version(run_id)
+            status, author = row.status, row.author
+            latest_number = latest.version if latest else number
+        cuts = []
+        for cut in storyboard.ordered_cuts():
+            data = cut.model_dump(mode="json")
+            photo = by_photo.get(cut.photo_id)
+            analysis = photo.analysis if photo else None
+            data["media"] = {
+                "photo_id": cut.photo_id,
+                "type": photo.media_type if photo else None,
+                "duration": photo.media_duration if photo else None,
+                "has_audio": photo.has_audio if photo else False,
+                "width": photo.width if photo else None,
+                "height": photo.height if photo else None,
+                "note": photo.note if photo else None,
+                "caption": analysis.caption if analysis else None,
+                "mood": analysis.mood if analysis else None,
+                "suggested_segment": analysis.segment if analysis else None,
+            }
+            cuts.append(data)
+        return {
+            "version": number,
+            "latest_version": latest_number,
+            "status": status,
+            "author": author,
+            "title": storyboard.title,
+            "format_id": storyboard.format_id,
+            "hook_type": storyboard.hook_type,
+            "audio_mode": storyboard.audio_mode,
+            "music_id": storyboard.music_id,
+            "music_name": track.name if (track := self._track(storyboard.music_id)) else None,
+            "total_sec": round(sum(c.target_sec for c in storyboard.cuts), 2),
+            "cuts": cuts,
+            "photos": [
+                {
+                    "photo_id": p.photo_id,
+                    "type": p.media_type,
+                    "duration": p.media_duration,
+                    "has_audio": p.has_audio,
+                }
+                for p in photos
+            ],
+            "errors": [_issue_dict(i) for i in report.errors],
+            "warnings": [_issue_dict(i) for i in report.warnings],
+        }
+
+    def _track(self, music_id: str | None) -> MusicTrack | None:
+        return self.music.get(music_id) if self.music else None
+
     def _validate(self, storyboard: Storyboard, photos: list[PhotoRecord]) -> ValidationReport:
         report = validate_storyboard(
             storyboard,
             photos,
             self.formats.get(storyboard.format_id),
             self.settings.storyboard,
+            self.music,
         )
         for cut in storyboard.cuts:
             if "prompt_stale" in cut.flags:
@@ -176,6 +261,13 @@ class StoryboardService:
                     "prompt_stale",
                     "샷을 바꿨지만 영상 프롬프트는 그대로입니다. 프롬프트를 고치거나 "
                     "`vlog storyboard regen --field motion_prompt`를 실행하세요.",
+                )
+            if cut.effect and self.effects and not self.effects.is_valid(cut.effect):
+                report.error(
+                    f"cut({cut.cut_id}).effect",
+                    "unknown_effect",
+                    f"없는 효과입니다: {cut.effect}. 가능: {', '.join(self.effects.names)} "
+                    "또는 공백이 있는 영어 문장",
                 )
         return report
 
@@ -239,11 +331,15 @@ class StoryboardService:
     # ── 내보내기 ──────────────────────────────────────────────────────────
     def export_yaml(self, run_id: str, version: int | None = None) -> tuple[int, str]:
         number, storyboard = self.get_storyboard(run_id, version)
-        return number, render_yaml(number, storyboard, self.photos(run_id))
+        names = self.effects.names if self.effects else None
+        return number, render_yaml(number, storyboard, self.photos(run_id), names)
 
     # ── 가져오기 ──────────────────────────────────────────────────────────
     def import_yaml(self, run_id: str, text: str) -> ImportResult:
-        edit = _parse_edit_file(text)
+        return self.import_edit(run_id, _parse_edit_file(text))
+
+    def import_edit(self, run_id: str, edit: EditFile) -> ImportResult:
+        """수정본을 검증해 새 버전으로 저장한다. CLI와 API가 같은 규칙을 탄다."""
         photos = self.photos(run_id)
         with session_scope(self.factory) as session:
             repo = Repo(session)
@@ -323,10 +419,26 @@ class StoryboardService:
         else:
             for number, cut in enumerate(cuts, start=1):
                 cut.position = number
-        return base.model_copy(update={"title": edit.title, "cuts": cuts})
+        update: dict[str, Any] = {"title": edit.title, "cuts": cuts}
+        if "music_id" in edit.model_fields_set:  # 보내지 않으면 기존 음악을 유지한다
+            update["music_id"] = (edit.music_id or "").strip() or None
+        return base.model_copy(update=update)
+
+    def _clip_for(
+        self, item: EditCut, photo: PhotoRecord, before: Cut | None = None
+    ) -> SourceClip | None:
+        """직접 적은 구간을 우선한다. 사진 컷에 적은 값은 남겨 검증에서 오류로 알린다."""
+        if item.source_clip is not None:
+            return item.source_clip
+        if not photo.is_video:
+            return None
+        if before is not None and before.photo_id == photo.photo_id and before.source_clip:
+            return before.source_clip
+        return default_source_clip(photo, self.settings.video_input.max_cut_sec)
 
     def _new_cut(self, cut_id: str, item: EditCut, photo: PhotoRecord) -> Cut:
         plan = self.planner.plan(PhotoGeom.from_record(photo), item.shot.shot_size)
+        clip = self._clip_for(item, photo)
         cut = Cut(
             cut_id=cut_id,
             position=item.position,
@@ -334,7 +446,8 @@ class StoryboardService:
             photo_id=item.photo_id,
             role=item.role,
             narration=item.narration,
-            target_sec=item.target_sec,
+            target_sec=clip.length if clip and photo.is_video else item.target_sec,
+            source_clip=clip,
             shot=ShotDesign(
                 shot_size=item.shot.shot_size,
                 camera_move=item.shot.camera_move,
@@ -343,7 +456,10 @@ class StoryboardService:
                 on_screen_text=item.shot.on_screen_text,
                 transition_in=item.shot.transition_in,
             ),
-            motion_prompt=item.motion_prompt or self._default_prompt(item, photo),
+            motion_prompt=""
+            if photo.is_video
+            else item.motion_prompt or self._default_prompt(item, photo),
+            effect=_clean_effect(item.effect),
             flags=["human_added"],
         )
         apply_crop_plan(cut, plan)
@@ -355,6 +471,7 @@ class StoryboardService:
             item.shot.shot_size,
             item.shot.camera_move,
             is_person=bool(photo.analysis and photo.analysis.subject_type == "인물"),
+            face_hidden=bool(photo.analysis and photo.analysis.face_hidden),
         )
 
     def _merged_cut(
@@ -371,7 +488,12 @@ class StoryboardService:
         cut.photo_id = item.photo_id
         cut.role = item.role
         cut.narration = item.narration
-        cut.target_sec = item.target_sec
+        cut.source_clip = self._clip_for(item, photo, before)
+        # 원본 영상 컷의 길이는 구간이 정한다.
+        cut.target_sec = (
+            cut.source_clip.length if cut.source_clip and photo.is_video else item.target_sec
+        )
+        cut.effect = _clean_effect(item.effect)
         cut.shot.shot_size = item.shot.shot_size
         cut.shot.camera_move = item.shot.camera_move
         cut.shot.subject_action = item.shot.subject_action
@@ -389,10 +511,15 @@ class StoryboardService:
             cut.fit_score = slot_fit(photo, slot) if slot else None
         _apply_crop_edit(cut, item)
 
-        new_prompt = item.motion_prompt or before.motion_prompt
+        flags = [f for f in cut.flags if f != "prompt_stale"]
+        if photo.is_video:
+            cut.motion_prompt = ""  # 원본 영상을 쓰므로 프롬프트가 필요 없다
+            cut.flags = flags
+            return cut
+        # 영상에서 사진으로 바꾸면 프롬프트가 비어 있으므로 프리셋으로 채운다.
+        new_prompt = item.motion_prompt or before.motion_prompt or self._default_prompt(item, photo)
         prompt_changed = new_prompt != before.motion_prompt
         cut.motion_prompt = new_prompt
-        flags = [f for f in cut.flags if f != "prompt_stale"]
         if prompt_changed:
             cut.flags = flags
         elif shot_changed or photo_changed or "prompt_stale" in before.flags:
@@ -483,9 +610,14 @@ class StoryboardService:
                     f"최신 버전(v{latest.version})만 승인할 수 있습니다. v{row.version}으로 돌아가려면 "
                     f"`vlog storyboard revert {run_id} --version {row.version}`을 실행하세요."
                 )
-            report = self._validate(Storyboard.model_validate(row.content), photos)
+            storyboard = Storyboard.model_validate(row.content)
+            report = self._validate(storyboard, photos)
             if row.status == VERSION_APPROVED:
                 return row.version, report
+            # 음악 전용인데 쓸 곡이 없으면 무음 영상이 되므로 승인하지 않는다.
+            problem = music_problem(storyboard, self.music)
+            if problem is not None:
+                raise VlogError(problem[1])
             if not report.ok:
                 raise StoryboardValidationError(report)
             if report.warnings and not accept_warnings:
@@ -528,6 +660,14 @@ class StoryboardService:
             )
 
 
+def _clean_effect(effect: str | None) -> str | None:
+    return (effect or "").strip() or None
+
+
+def _issue_dict(issue: Any) -> dict[str, str]:
+    return {"location": issue.location, "code": issue.code, "message": issue.message}
+
+
 def _apply_crop_edit(cut: Cut, item: EditCut) -> None:
     """crop_box를 직접 적으면 후보보다 우선한다."""
     if item.shot.crop_choice is not None:
@@ -568,10 +708,19 @@ def _one_line(text: str) -> str:
     return " ".join(text.split())
 
 
-def render_yaml(version: int, storyboard: Storyboard, photos: list[PhotoRecord]) -> str:
+def render_yaml(
+    version: int,
+    storyboard: Storyboard,
+    photos: list[PhotoRecord],
+    effect_names: list[str] | None = None,
+) -> str:
     """사람이 고칠 storyboard.yaml을 만든다. 주석으로 사진 설명과 표시를 함께 보여준다."""
     by_photo = {p.photo_id: p for p in photos}
     root = CommentedMap()
+    if effect_names:
+        root.yaml_set_start_comment(
+            f"effect 값: {', '.join(effect_names)}, 공백이 있는 영어 문장, 또는 null(원본 사진 사용)"
+        )
     root["base_version"] = version
     root["title"] = storyboard.title
     cuts = CommentedSeq()
@@ -604,11 +753,27 @@ def render_yaml(version: int, storyboard: Storyboard, photos: list[PhotoRecord])
         item["target_sec"] = cut.target_sec
         item["shot"] = shot
         item["motion_prompt"] = cut.motion_prompt
+        item["effect"] = cut.effect
+        photo = by_photo.get(cut.photo_id)
+        if cut.source_clip is not None:
+            clip = CommentedMap()
+            clip["in_sec"] = cut.source_clip.in_sec
+            clip["out_sec"] = cut.source_clip.out_sec
+            clip["audio"] = cut.source_clip.audio
+            clip.fa.set_flow_style()
+            item["source_clip"] = clip
+            if photo is not None:
+                sound = "소리 있음" if photo.has_audio else "소리 없음"
+                item.yaml_add_eol_comment(
+                    f"영상 {photo.media_duration or 0:.1f}초, {sound}. audio: narration, source, mix",
+                    "source_clip",
+                )
         item["locked"] = _flow(list(cut.locked))
 
-        photo = by_photo.get(cut.photo_id)
         if photo is not None and photo.analysis is not None:
-            item.yaml_add_eol_comment(_one_line(photo.analysis.caption), "photo_id")
+            caption = _one_line(photo.analysis.caption)
+            note = f" / 메모: {_one_line(photo.note)}" if photo.note else ""
+            item.yaml_add_eol_comment(caption + note, "photo_id")
         marks = list(cut.flags)
         if cut.fit_score is not None:
             marks.append(f"적합도 {cut.fit_score}")

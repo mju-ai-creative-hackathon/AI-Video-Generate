@@ -1,0 +1,3281 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Vlog Shorts API",
+    "description": "미션별 사진·영상으로 스토리보드를 만들고, 사람이 검토·승인한 뒤 영상을 생성한다. 승인 전에는 TTS와 영상 생성을 시작하지 않는다.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "backend"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Api V1 Health Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/renders": {
+      "post": {
+        "tags": [
+          "backend"
+        ],
+        "summary": "Submit Render",
+        "operationId": "submit_render_api_v1_renders_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_submit_render_api_v1_renders_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog": {
+      "get": {
+        "tags": [
+          "backend"
+        ],
+        "summary": "Catalog",
+        "description": "Backend가 앱에 보여줄 템플릿과 음악 목록. 음악은 파일까지 있는 곡만 나온다.",
+        "operationId": "catalog_api_v1_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/renders/{run_id}": {
+      "get": {
+        "tags": [
+          "backend"
+        ],
+        "summary": "Get Render",
+        "operationId": "get_render_api_v1_renders__run_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/renders/{run_id}/video": {
+      "get": {
+        "tags": [
+          "backend"
+        ],
+        "summary": "Get Render Video",
+        "operationId": "get_render_video_api_v1_renders__run_id__video_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/options": {
+      "get": {
+        "tags": [
+          "options"
+        ],
+        "summary": "Options",
+        "operationId": "options_api_v1_options_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Options"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/missions": {
+      "get": {
+        "tags": [
+          "missions"
+        ],
+        "summary": "List Missions",
+        "operationId": "list_missions_api_v1_missions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MissionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Missions Api V1 Missions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "missions"
+        ],
+        "summary": "Create Mission",
+        "operationId": "create_mission_api_v1_missions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/missions/{mission_id}": {
+      "get": {
+        "tags": [
+          "missions"
+        ],
+        "summary": "Get Mission",
+        "operationId": "get_mission_api_v1_missions__mission_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/missions/{mission_id}/runs": {
+      "get": {
+        "tags": [
+          "missions"
+        ],
+        "summary": "List Mission Runs",
+        "operationId": "list_mission_runs_api_v1_missions__mission_id__runs_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response List Mission Runs Api V1 Missions  Mission Id  Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Submit Run",
+        "operationId": "submit_run_api_v1_missions__mission_id__runs_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_submit_run_api_v1_missions__mission_id__runs_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/storyboard": {
+      "get": {
+        "tags": [
+          "storyboard"
+        ],
+        "summary": "Get Storyboard",
+        "operationId": "get_storyboard_api_v1_runs__run_id__storyboard_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryboardView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "storyboard"
+        ],
+        "summary": "Save Storyboard",
+        "operationId": "save_storyboard_api_v1_runs__run_id__storyboard_put",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditFile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/storyboard/regen": {
+      "post": {
+        "tags": [
+          "storyboard"
+        ],
+        "summary": "Regen Storyboard",
+        "operationId": "regen_storyboard_api_v1_runs__run_id__storyboard_regen_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/storyboard/diff": {
+      "get": {
+        "tags": [
+          "storyboard"
+        ],
+        "summary": "Diff Storyboard",
+        "operationId": "diff_storyboard_api_v1_runs__run_id__storyboard_diff_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Diff Storyboard Api V1 Runs  Run Id  Storyboard Diff Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/storyboard/revert": {
+      "post": {
+        "tags": [
+          "storyboard"
+        ],
+        "summary": "Revert Storyboard",
+        "operationId": "revert_storyboard_api_v1_runs__run_id__storyboard_revert_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevertRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Revert Storyboard Api V1 Runs  Run Id  Storyboard Revert Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/approve": {
+      "post": {
+        "tags": [
+          "storyboard"
+        ],
+        "summary": "Approve Storyboard",
+        "operationId": "approve_storyboard_api_v1_runs__run_id__approve_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApproveResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/render": {
+      "post": {
+        "tags": [
+          "render"
+        ],
+        "summary": "Render Run",
+        "operationId": "render_run_api_v1_runs__run_id__render_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RenderRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/cuts/{cut_id}/regen-clip": {
+      "post": {
+        "tags": [
+          "render"
+        ],
+        "summary": "Regen Clip",
+        "operationId": "regen_clip_api_v1_runs__run_id__cuts__cut_id__regen_clip_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "cut_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cut Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RegenClipRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/media/{photo_id}/poster": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Get Poster",
+        "operationId": "get_poster_api_v1_runs__run_id__media__photo_id__poster_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Photo Id"
+            }
+          },
+          {
+            "name": "expires",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expires"
+            }
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/media/{photo_id}": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Get Media",
+        "operationId": "get_media_api_v1_runs__run_id__media__photo_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Photo Id"
+            }
+          },
+          {
+            "name": "expires",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expires"
+            }
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/video": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Get Video",
+        "operationId": "get_video_api_v1_runs__run_id__video_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "expires",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expires"
+            }
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApproveRequest": {
+        "properties": {
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "생략하면 최신 버전"
+          },
+          "accept_warnings": {
+            "type": "boolean",
+            "title": "Accept Warnings",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ApproveRequest"
+      },
+      "ApproveResult": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "warnings"
+        ],
+        "title": "ApproveResult"
+      },
+      "Body_submit_render_api_v1_renders_post": {
+        "properties": {
+          "manifest": {
+            "type": "string",
+            "title": "Manifest",
+            "description": "Backend 제작 요청 메타데이터(JSON)"
+          },
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "소스 파일. 이 순서가 컷 순서다"
+          }
+        },
+        "type": "object",
+        "required": [
+          "manifest",
+          "files"
+        ],
+        "title": "Body_submit_render_api_v1_renders_post"
+      },
+      "Body_submit_run_api_v1_missions__mission_id__runs_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "사진·영상. 이 순서가 컷 순서다"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items",
+            "description": "파일별 정보의 JSON 배열. 예: [{\"note\": \"주문 장면\", \"audio\": \"mix\"}, {}]"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format",
+            "description": "생략하면 자동 선택"
+          },
+          "music": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Music",
+            "description": "배경 음악 id. 생략하면 템플릿의 기본 음악"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_submit_run_api_v1_missions__mission_id__runs_post"
+      },
+      "BridgeStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "busy": {
+            "type": "boolean",
+            "title": "Busy",
+            "default": false
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "storyboardVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storyboardversion"
+          },
+          "storyboardStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storyboardstatus"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "phase"
+        ],
+        "title": "BridgeStatus",
+        "description": "Backend가 조회하는 상태. `status`는 Backend 계약의 값이다."
+      },
+      "Catalog": {
+        "properties": {
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/FormatOption"
+            },
+            "type": "array",
+            "title": "Templates"
+          },
+          "music": {
+            "items": {
+              "$ref": "#/components/schemas/MusicOption"
+            },
+            "type": "array",
+            "title": "Music"
+          }
+        },
+        "type": "object",
+        "required": [
+          "templates",
+          "music"
+        ],
+        "title": "Catalog"
+      },
+      "CutMedia": {
+        "properties": {
+          "photo_id": {
+            "type": "string",
+            "title": "Photo Id"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "video"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
+          "has_audio": {
+            "type": "boolean",
+            "title": "Has Audio"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "suggested_segment": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Segment",
+            "description": "AI가 고른 [시작 초, 끝 초]"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo_id",
+          "type",
+          "duration",
+          "has_audio",
+          "width",
+          "height",
+          "note",
+          "caption",
+          "mood",
+          "suggested_segment"
+        ],
+        "title": "CutMedia"
+      },
+      "CutView": {
+        "properties": {
+          "cut_id": {
+            "type": "string",
+            "title": "Cut Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "locked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Locked"
+          },
+          "photo_id": {
+            "type": "string",
+            "title": "Photo Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "hook",
+              "body",
+              "ending"
+            ],
+            "title": "Role"
+          },
+          "narration": {
+            "type": "string",
+            "title": "Narration"
+          },
+          "target_sec": {
+            "type": "number",
+            "title": "Target Sec"
+          },
+          "shot": {
+            "$ref": "#/components/schemas/ShotDesign"
+          },
+          "framing_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Framing Refs"
+          },
+          "motion_prompt": {
+            "type": "string",
+            "title": "Motion Prompt"
+          },
+          "effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect"
+          },
+          "source_clip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceClip"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot"
+          },
+          "fit_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fit Score"
+          },
+          "crop_source": {
+            "type": "string",
+            "enum": [
+              "rag",
+              "rule",
+              "human"
+            ],
+            "title": "Crop Source",
+            "default": "rule"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "media": {
+            "$ref": "#/components/schemas/CutMedia"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cut_id",
+          "position",
+          "photo_id",
+          "role",
+          "narration",
+          "target_sec",
+          "shot",
+          "motion_prompt",
+          "media"
+        ],
+        "title": "CutView"
+      },
+      "EditCut": {
+        "properties": {
+          "cut_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cut Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "photo_id": {
+            "type": "string",
+            "title": "Photo Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "hook",
+              "body",
+              "ending"
+            ],
+            "title": "Role"
+          },
+          "narration": {
+            "type": "string",
+            "title": "Narration"
+          },
+          "target_sec": {
+            "type": "number",
+            "title": "Target Sec"
+          },
+          "shot": {
+            "$ref": "#/components/schemas/EditShot"
+          },
+          "motion_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motion Prompt"
+          },
+          "effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect"
+          },
+          "source_clip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceClip"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Locked"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "photo_id",
+          "role",
+          "narration",
+          "target_sec",
+          "shot"
+        ],
+        "title": "EditCut"
+      },
+      "EditFile": {
+        "properties": {
+          "base_version": {
+            "type": "integer",
+            "title": "Base Version"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "music_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Music Id"
+          },
+          "cuts": {
+            "items": {
+              "$ref": "#/components/schemas/EditCut"
+            },
+            "type": "array",
+            "title": "Cuts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "base_version",
+          "title",
+          "cuts"
+        ],
+        "title": "EditFile"
+      },
+      "EditShot": {
+        "properties": {
+          "shot_size": {
+            "type": "string",
+            "enum": [
+              "wide",
+              "medium",
+              "close_up",
+              "detail"
+            ],
+            "title": "Shot Size"
+          },
+          "camera_move": {
+            "type": "string",
+            "enum": [
+              "static",
+              "slow_push_in",
+              "pull_out",
+              "pan_left",
+              "pan_right",
+              "tilt_up",
+              "handheld"
+            ],
+            "title": "Camera Move"
+          },
+          "subject_action": {
+            "type": "string",
+            "title": "Subject Action",
+            "default": ""
+          },
+          "crop_choice": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Choice"
+          },
+          "crop_box": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Box"
+          },
+          "on_screen_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Screen Text"
+          },
+          "transition_in": {
+            "type": "string",
+            "enum": [
+              "hard_cut",
+              "fade"
+            ],
+            "title": "Transition In",
+            "default": "hard_cut"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shot_size",
+          "camera_move"
+        ],
+        "title": "EditShot"
+      },
+      "FieldChangeOut": {
+        "properties": {
+          "cut_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cut Id"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "after": {
+            "title": "After"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cut_id",
+          "field"
+        ],
+        "title": "FieldChangeOut"
+      },
+      "FormatOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "hook_type": {
+            "type": "string",
+            "title": "Hook Type"
+          },
+          "total_sec_min": {
+            "type": "number",
+            "title": "Total Sec Min"
+          },
+          "total_sec_max": {
+            "type": "number",
+            "title": "Total Sec Max"
+          },
+          "audio_mode": {
+            "type": "string",
+            "enum": [
+              "narration",
+              "music"
+            ],
+            "title": "Audio Mode",
+            "description": "music이면 나레이션 없이 음악만 넣는다",
+            "default": "narration"
+          },
+          "music": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Music",
+            "description": "템플릿의 기본 음악 id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "hook_type",
+          "total_sec_min",
+          "total_sec_max"
+        ],
+        "title": "FormatOption"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Issue": {
+        "properties": {
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "code",
+          "message"
+        ],
+        "title": "Issue"
+      },
+      "JobAccepted": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "run_id"
+        ],
+        "title": "JobAccepted"
+      },
+      "JobOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current",
+            "description": "진행 메시지의 현재 번호. 진행 막대용"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "kind",
+          "status",
+          "created_at"
+        ],
+        "title": "JobOut"
+      },
+      "MissionCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "MissionCreate"
+      },
+      "MissionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "created_at"
+        ],
+        "title": "MissionOut"
+      },
+      "MusicOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "moods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Moods"
+          },
+          "bpm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bpm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "MusicOption"
+      },
+      "Options": {
+        "properties": {
+          "formats": {
+            "items": {
+              "$ref": "#/components/schemas/FormatOption"
+            },
+            "type": "array",
+            "title": "Formats"
+          },
+          "music": {
+            "items": {
+              "$ref": "#/components/schemas/MusicOption"
+            },
+            "type": "array",
+            "title": "Music",
+            "description": "파일까지 있어 고를 수 있는 배경 음악"
+          },
+          "effects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Effects"
+          },
+          "shot_sizes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Shot Sizes"
+          },
+          "camera_moves": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Camera Moves"
+          },
+          "transitions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Transitions"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "audio_modes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Audio Modes"
+          },
+          "regen_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Regen Fields"
+          },
+          "lockable_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lockable Fields"
+          },
+          "tts_providers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tts Providers"
+          },
+          "video_providers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Video Providers"
+          },
+          "image_extensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Image Extensions"
+          },
+          "video_extensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Video Extensions"
+          },
+          "max_files": {
+            "type": "integer",
+            "title": "Max Files"
+          },
+          "max_file_mb": {
+            "type": "integer",
+            "title": "Max File Mb"
+          },
+          "max_video_sec": {
+            "type": "number",
+            "title": "Max Video Sec"
+          }
+        },
+        "type": "object",
+        "required": [
+          "formats",
+          "effects",
+          "shot_sizes",
+          "camera_moves",
+          "transitions",
+          "roles",
+          "audio_modes",
+          "regen_fields",
+          "lockable_fields",
+          "tts_providers",
+          "video_providers",
+          "image_extensions",
+          "video_extensions",
+          "max_files",
+          "max_file_mb",
+          "max_video_sec"
+        ],
+        "title": "Options"
+      },
+      "PhotoRef": {
+        "properties": {
+          "photo_id": {
+            "type": "string",
+            "title": "Photo Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ],
+            "title": "Type"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
+          "has_audio": {
+            "type": "boolean",
+            "title": "Has Audio"
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo_id",
+          "type",
+          "duration",
+          "has_audio",
+          "image_url"
+        ],
+        "title": "PhotoRef"
+      },
+      "RegenClipRequest": {
+        "properties": {
+          "tts": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "elevenlabs",
+                  "silent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tts",
+            "description": "생략하면 config.yaml의 값"
+          },
+          "video": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "comfyui",
+                  "veo",
+                  "kenburns"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video",
+            "description": "생략하면 config.yaml의 값"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMaximum": 4294967296.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "description": "생략하면 무작위"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RegenClipRequest"
+      },
+      "RegenRequest": {
+        "properties": {
+          "cut_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cut Ids",
+            "description": "생략하면 전체 컷"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields",
+            "description": "생략하면 전체 항목"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RegenRequest"
+      },
+      "RenderRequest": {
+        "properties": {
+          "tts": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "elevenlabs",
+                  "silent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tts",
+            "description": "생략하면 config.yaml의 값"
+          },
+          "video": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "comfyui",
+                  "veo",
+                  "kenburns"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video",
+            "description": "생략하면 config.yaml의 값"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RenderRequest"
+      },
+      "RevertRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "RevertRequest"
+      },
+      "RunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "mission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mission Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version"
+          },
+          "latest_version_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Status"
+          },
+          "active_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VideoOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "mission_id",
+          "status",
+          "error",
+          "latest_version",
+          "latest_version_status",
+          "active_job",
+          "video",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RunOut"
+      },
+      "SaveResult": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "changed": {
+            "type": "boolean",
+            "title": "Changed"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChangeOut"
+            },
+            "type": "array",
+            "title": "Changes"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "changed",
+          "changes",
+          "warnings"
+        ],
+        "title": "SaveResult"
+      },
+      "ShotDesign": {
+        "properties": {
+          "shot_size": {
+            "type": "string",
+            "enum": [
+              "wide",
+              "medium",
+              "close_up",
+              "detail"
+            ],
+            "title": "Shot Size"
+          },
+          "camera_move": {
+            "type": "string",
+            "enum": [
+              "static",
+              "slow_push_in",
+              "pull_out",
+              "pan_left",
+              "pan_right",
+              "tilt_up",
+              "handheld"
+            ],
+            "title": "Camera Move"
+          },
+          "subject_action": {
+            "type": "string",
+            "title": "Subject Action",
+            "default": ""
+          },
+          "crop_options": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Crop Options"
+          },
+          "crop_choice": {
+            "type": "integer",
+            "title": "Crop Choice",
+            "default": 1
+          },
+          "crop_box": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Crop Box"
+          },
+          "on_screen_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Screen Text"
+          },
+          "transition_in": {
+            "type": "string",
+            "enum": [
+              "hard_cut",
+              "fade"
+            ],
+            "title": "Transition In",
+            "default": "hard_cut"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shot_size",
+          "camera_move",
+          "crop_box"
+        ],
+        "title": "ShotDesign"
+      },
+      "SourceClip": {
+        "properties": {
+          "in_sec": {
+            "type": "number",
+            "title": "In Sec",
+            "default": 0.0
+          },
+          "out_sec": {
+            "type": "number",
+            "title": "Out Sec"
+          },
+          "audio": {
+            "type": "string",
+            "enum": [
+              "narration",
+              "source",
+              "mix"
+            ],
+            "title": "Audio",
+            "default": "narration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "out_sec"
+        ],
+        "title": "SourceClip",
+        "description": "원본 영상 컷의 사용 구간과 소리. 이 값이 있는 컷은 AI 영상을 만들지 않는다."
+      },
+      "StoryboardView": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "latest_version": {
+            "type": "integer",
+            "title": "Latest Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "approved"
+            ],
+            "title": "Status"
+          },
+          "author": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "human"
+            ],
+            "title": "Author"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "format_id": {
+            "type": "string",
+            "title": "Format Id"
+          },
+          "hook_type": {
+            "type": "string",
+            "title": "Hook Type"
+          },
+          "audio_mode": {
+            "type": "string",
+            "enum": [
+              "narration",
+              "music"
+            ],
+            "title": "Audio Mode",
+            "description": "music이면 나레이션 없이 음악만 넣는다",
+            "default": "narration"
+          },
+          "music_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Music Id",
+            "description": "수정 가능. null이면 음악 없음"
+          },
+          "music_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Music Name"
+          },
+          "total_sec": {
+            "type": "number",
+            "title": "Total Sec"
+          },
+          "cuts": {
+            "items": {
+              "$ref": "#/components/schemas/CutView"
+            },
+            "type": "array",
+            "title": "Cuts"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoRef"
+            },
+            "type": "array",
+            "title": "Photos",
+            "description": "컷의 사진을 바꿀 때 고를 수 있는 자료 목록"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "latest_version",
+          "status",
+          "author",
+          "title",
+          "format_id",
+          "hook_type",
+          "total_sec",
+          "cuts",
+          "photos",
+          "errors",
+          "warnings"
+        ],
+        "title": "StoryboardView"
+      },
+      "SubmitAccepted": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId"
+        ],
+        "title": "SubmitAccepted"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VideoOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "서명된 URL. 만료되면 실행을 다시 조회한다"
+          },
+          "storyboard_version": {
+            "type": "integer",
+            "title": "Storyboard Version"
+          },
+          "duration": {
+            "type": "number",
+            "title": "Duration"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "storyboard_version",
+          "duration",
+          "width",
+          "height",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "VideoOut"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -19,6 +19,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     event,
+    false,
     inspect,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -48,8 +49,16 @@ VERSION_APPROVED = "approved"
 
 ASSET_AUDIO = "audio"
 ASSET_CLIP = "clip"
+ASSET_IMAGE = "image"
 ASSET_DONE = "done"
 ASSET_FAILED = "failed"
+
+JOB_QUEUED = "queued"
+JOB_RUNNING = "running"
+JOB_DONE = "done"
+JOB_FAILED = "failed"
+JOB_NEEDS_REVIEW = "needs_review"  # 생성 중 재승인이 필요해져 멈춘 경우
+JOB_ACTIVE = (JOB_QUEUED, JOB_RUNNING)
 
 
 def utcnow() -> datetime:
@@ -112,10 +121,21 @@ class MotionPreset(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
 
+class Mission(Base):
+    __tablename__ = "missions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Run(Base):
     __tablename__ = "runs"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    # CLI 실행은 미션이 없다.
+    mission_id: Mapped[str | None] = mapped_column(ForeignKey("missions.id"), index=True)
     status: Mapped[str] = mapped_column(String(32), default=RUN_PLANNING)
     memo: Mapped[str | None] = mapped_column(Text)
     config: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
@@ -141,6 +161,12 @@ class Photo(Base):
     taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     excluded_reason: Mapped[str | None] = mapped_column(Text)
     analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
+    media_type: Mapped[str] = mapped_column(String(8), default="image", server_default="image")
+    video_path: Mapped[str | None] = mapped_column(Text)
+    media_duration: Mapped[float | None] = mapped_column(Float)
+    has_audio: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    note: Mapped[str | None] = mapped_column(Text)
+    audio_mode: Mapped[str | None] = mapped_column(String(16))
 
     __table_args__ = (UniqueConstraint("run_id", "photo_id", name="uq_photos_run_photo"),)
 
@@ -194,7 +220,7 @@ class CutAsset(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), index=True)
     cut_id: Mapped[str] = mapped_column(String(32))
-    kind: Mapped[str] = mapped_column(String(8))  # audio / clip
+    kind: Mapped[str] = mapped_column(String(8))  # audio / clip / image
     input_hash: Mapped[str] = mapped_column(String(64))
     path: Mapped[str | None] = mapped_column(Text)
     audio_sec: Mapped[float | None] = mapped_column(Float)
@@ -205,6 +231,27 @@ class CutAsset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     __table_args__ = (Index("ix_cut_assets_lookup", "run_id", "cut_id", "kind", "input_hash"),)
+
+
+class Job(Base):
+    """서버의 오래 걸리는 작업. 작업자 하나가 오래된 것부터 하나씩 처리한다."""
+
+    __tablename__ = "jobs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # plan / regen / render / regen_clip
+    status: Mapped[str] = mapped_column(String(16), default=JOB_QUEUED)
+    stage: Mapped[str | None] = mapped_column(String(32))
+    message: Mapped[str | None] = mapped_column(Text)
+    params: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_jobs_status_created", "status", "created_at"),)
 
 
 class Video(Base):

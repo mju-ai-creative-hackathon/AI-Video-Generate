@@ -1,0 +1,14 @@
+# 배경 음악 목록. 템플릿의 audio.music과 제작 요청의 musicId가 여기 id를 가리킨다.
+# 라이선스를 확보한 곡만 넣는다(상업적 이용, 2차 저작물 허용, 출처 표기 조건을 license에 적는다).
+# 파일은 assets/music/에 둔다. 이 폴더는 git에 올리지 않는다.
+# 파일이 없는 곡은 선택지에 나오지 않고, 그 곡을 고른 스토리보드는 승인할 때 오류가 난다.
+#
+# 예:
+# tracks:
+#   - id: calm_piano_01
+#     name: 잔잔한 피아노
+#     file: assets/music/calm_piano_01.mp3
+#     license: "OO 라이선스, 상업적 이용 가능, 출처 표기 불필요 (확인: 홍길동, 2026-11-06)"
+#     moods: [잔잔함, 따뜻함]
+#     bpm: 96
+tracks: []

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -15,11 +16,18 @@ from .errors import FormatMatchError
 from .format_match import Assignment, FormatTemplate, ShotOption, select_format
 from .llm.base import LLMClient, structured_call
 from .rag.framing import CropPlanner, PhotoGeom, check_crop, rule_based_crops
-from .schemas import Cut, PhotoRecord, ShotDesign, Storyboard, new_cut_id
+from .schemas import (
+    Cut,
+    PhotoRecord,
+    ShotDesign,
+    Storyboard,
+    default_source_clip,
+    new_cut_id,
+)
 from .validation import max_chars, spoken_chars
 
 SYSTEM = (
-    "당신은 숏폼 브이로그 대본 작가입니다. 주어진 사진 설명과 메모에 있는 사실만 씁니다. "
+    "당신은 숏폼 브이로그 대본 작가입니다. 주어진 사진·영상 설명과 메모, 미션에 있는 사실만 씁니다. "
     "반드시 주어진 JSON 스키마로만 답합니다."
 )
 TRANSLATE_SYSTEM = (
@@ -59,6 +67,16 @@ class ShortenOut(BaseModel):
     cuts: list[ShortenCut]
 
 
+FACE_HIDDEN_NOTE = (
+    "주의: 사진에서 얼굴이 보이지 않음. subject_action에 돌아보기, 고개 돌리기, 표정처럼 "
+    "얼굴이 드러나는 행동을 쓰지 말 것"
+)
+
+
+def _face_hidden(photo: PhotoRecord) -> bool:
+    return bool(photo.analysis and photo.analysis.face_hidden)
+
+
 def _load_yaml(path: Path) -> dict[str, Any]:
     return YAML(typ="safe").load(path.read_text(encoding="utf-8")) or {}
 
@@ -79,6 +97,7 @@ class MotionPresets:
         subject: str | None = None,
         action: str | None = None,
         is_person: bool = False,
+        face_hidden: bool = False,
     ) -> str:
         prompt = self.data["template"].format(
             shot=self.data["shots"][shot_size],
@@ -86,6 +105,8 @@ class MotionPresets:
             action=action or self.data["default_action"],
             move=self.data["moves"][camera_move],
         )
+        if face_hidden:
+            return prompt + self.data.get("no_face_suffix", "")
         return prompt + (self.data.get("person_suffix", "") if is_person else "")
 
 
@@ -159,10 +180,18 @@ class StoryboardGenerator:
         *,
         format_id: str | None = None,
         failure_dir: Path | None = None,
+        progress: Callable[[str], None] | None = None,
+        keep_order: bool = False,
+        one_per_cut: bool = False,
+        music_id: str | None = None,
     ) -> GeneratedDraft:
+        notify = progress or (lambda _message: None)
         usable = [p for p in photos if not p.excluded_reason and p.analysis is not None]
         if not usable:
             raise FormatMatchError("분석을 마친 사용 가능한 사진이 없습니다.")
+        if keep_order or one_per_cut:
+            # DB 조회는 문자열 순서라 p100이 p99보다 앞에 온다. 번호 순서로 다시 맞춘다.
+            usable = sorted(usable, key=lambda p: int(p.photo_id[1:]))
         cfg = self.settings.storyboard
         match = select_format(
             self.formats,
@@ -170,11 +199,15 @@ class StoryboardGenerator:
             forced=format_id,
             min_format_fit=cfg.min_format_fit,
             low_slot_fit=cfg.low_slot_fit,
+            keep_order=keep_order,
+            one_per_cut=one_per_cut,
         )
         notes = list(match.warnings)
         if match.dropped_photos:
             notes.append(f"포맷에 맞추느라 쓰지 않은 사진: {', '.join(match.dropped_photos)}")
 
+        music_only = match.template.music_only
+        notify(f"포맷 {match.template.format_id}, {len(match.assignments)}컷 대본 작성 중")
         script = self._write_script(match.assignments, match.template, memo, failure_dir)
         by_index = {c.cut_index: c for c in script.cuts}
 
@@ -191,13 +224,15 @@ class StoryboardGenerator:
             used[assignment.photo.photo_id].add(option.size)
             shots.append((option, flags))
 
-        motions = self._translate_motion(
-            [
-                (i, a.photo, by_index[i].subject_action)
-                for i, a in enumerate(match.assignments, start=1)
-            ],
-            failure_dir,
-        )
+        # 원본 영상을 쓰는 컷은 AI 영상을 만들지 않으므로 프롬프트가 필요 없다.
+        motion_items = [
+            (i, a.photo, by_index[i].subject_action)
+            for i, a in enumerate(match.assignments, start=1)
+            if not a.photo.is_video
+        ]
+        if motion_items:
+            notify("영상 프롬프트 작성 중")
+        motions = self._translate_motion(motion_items, failure_dir)
 
         cuts: list[Cut] = []
         existing: set[str] = set()
@@ -218,17 +253,31 @@ class StoryboardGenerator:
             if assignment.slot.text.use == "required" and not (text or "").strip():
                 flags.append("missing_text")
             motion = motions.get(index)
+            is_video = assignment.photo.is_video
+            clip = (
+                default_source_clip(assignment.photo, self.settings.video_input.max_cut_sec)
+                if is_video
+                else None
+            )
+            if clip is not None and music_only:
+                # 음악 전용 템플릿은 컷 길이가 리듬이므로 원본 영상 구간도 슬롯 길이로 자른다.
+                end = min(clip.out_sec, round(clip.in_sec + assignment.target_sec, 3))
+                clip = clip.model_copy(update={"out_sec": end})
             cuts.append(
                 Cut(
                     cut_id=cut_id,
                     position=index,
                     photo_id=assignment.photo.photo_id,
                     role=assignment.slot.role,
-                    narration=item.narration.strip(),
-                    target_sec=assignment.target_sec,
+                    # 원본 소리만 쓰는 컷과 음악 전용 템플릿은 나레이션을 합성하지 않는다.
+                    narration=""
+                    if music_only or (clip and clip.audio == "source")
+                    else item.narration.strip(),
+                    target_sec=clip.length if clip else assignment.target_sec,
+                    source_clip=clip,
                     shot=ShotDesign(
                         shot_size=option.size,
-                        camera_move=option.move,
+                        camera_move="static" if is_video else option.move,
                         subject_action=item.subject_action.strip(),
                         crop_options=plan.options,
                         crop_choice=1,
@@ -237,12 +286,15 @@ class StoryboardGenerator:
                         transition_in="hard_cut",
                     ),
                     framing_refs=plan.refs,
-                    motion_prompt=self.presets.render(
+                    motion_prompt=""
+                    if is_video
+                    else self.presets.render(
                         option.size,
                         option.move,
                         subject=motion.subject if motion else None,
                         action=motion.action if motion else None,
                         is_person=geom.subject_type == "인물",
+                        face_hidden=_face_hidden(assignment.photo),
                     ),
                     slot=assignment.slot.slot,
                     fit_score=assignment.fit,
@@ -250,11 +302,16 @@ class StoryboardGenerator:
                     flags=flags,
                 )
             )
+        chosen_music = music_id or match.template.audio.music
+        if music_only and not chosen_music:
+            notes.append("음악 전용 템플릿인데 고른 음악이 없습니다. 승인 전에 music_id를 정하세요.")
         storyboard = Storyboard(
             title=script.title.strip(),
             format_id=match.template.format_id,
             hook_type=match.template.hook_type,
             style_notes=str(self.style_rules.get("tone", "")),
+            audio_mode=match.template.audio.mode,
+            music_id=chosen_music,
             cuts=cuts,
         )
         return GeneratedDraft(storyboard=storyboard, notes=notes)
@@ -277,6 +334,7 @@ class StoryboardGenerator:
     ) -> ScriptOut:
         lines = []
         limits: dict[int, int] = {}
+        music_only = template.music_only
         for index, a in enumerate(assignments, start=1):
             limit = max_chars(a.target_sec, self._chars_per_sec(a.slot.narration.chars_per_sec))
             limits[index] = limit
@@ -285,19 +343,34 @@ class StoryboardGenerator:
             text_rule = {"required": "필수", "optional": "선택", "none": "쓰지 않음(null)"}[
                 a.slot.text.use
             ]
+            kind = "영상 설명" if a.photo.is_video else "사진 설명"
+            narration_rule = (
+                "나레이션: 쓰지 않음(빈 문자열)"
+                if music_only
+                else f"목표: {a.slot.narration.goal} | 나레이션 최대 {limit}자(공백 제외)"
+            )
             lines.append(
-                f"컷 {index} | 역할: {a.slot.role} | 목표: {a.slot.narration.goal} | "
-                f"길이: {a.target_sec}초 | 나레이션 최대 {limit}자(공백 제외) | 화면 문구: {text_rule}\n"
-                f"  사진 설명: {analysis.caption}\n"
+                f"컷 {index} | 역할: {a.slot.role} | {narration_rule} | "
+                f"길이: {a.target_sec}초 | 화면 문구: {text_rule}\n"
+                f"  {kind}: {analysis.caption}\n"
                 f"  분위기: {analysis.mood}\n"
                 f"  움직임 아이디어: {', '.join(analysis.motion_ideas) or '없음'}"
             )
+            if a.photo.note:
+                lines[-1] += f"\n  제출자 메모: {a.photo.note}"
+            if analysis.face_hidden:
+                lines[-1] += f"\n  {FACE_HIDDEN_NOTE}"
+        task = (
+            "음악만 쓰는 영상입니다. 나레이션은 모두 빈 문자열로 두고, 화면 문구와 "
+            "피사체 행동(subject_action), 영상 전체의 제목을 쓰세요."
+            if music_only
+            else "아래 컷마다 나레이션, 화면 문구, 피사체 행동(subject_action)을 쓰고 "
+            "영상 전체의 제목도 쓰세요."
+        )
         prompt = (
             f"포맷: {template.name or template.format_id} (훅 유형: {template.hook_type})\n"
             f"메모: {memo or '없음'}\n\n{self._style_block()}\n\n"
-            "아래 컷마다 나레이션, 화면 문구, 피사체 행동(subject_action)을 쓰고 "
-            "영상 전체의 제목도 쓰세요. cut_index는 컷 번호와 같아야 합니다.\n\n"
-            + "\n".join(lines)
+            f"{task} cut_index는 컷 번호와 같아야 합니다.\n\n" + "\n".join(lines)
         )
         expected = set(limits)
 
@@ -306,7 +379,7 @@ class StoryboardGenerator:
             if indexes != expected or len(result.cuts) != len(expected):
                 raise ValueError(f"cut_index는 {sorted(expected)}이어야 합니다: {sorted(indexes)}")
             empty = [c.cut_index for c in result.cuts if not c.narration.strip()]
-            if empty:
+            if empty and not music_only:
                 raise ValueError(f"나레이션이 비어 있는 컷: {empty}")
 
         llm_cfg = self.settings.llm
@@ -320,6 +393,8 @@ class StoryboardGenerator:
         }
         result = structured_call(self.llm, ScriptOut, prompt=prompt, **call)
 
+        if music_only:
+            return result  # 나레이션을 쓰지 않으므로 글자 수를 다시 요청하지 않는다
         # 글자 수 초과는 다시 요청하되, 끝내 넘으면 경고로 남겨 사람이 판단하게 한다.
         tolerance = self.settings.storyboard.chars_tolerance
         for _ in range(self.settings.storyboard.max_script_retries):
@@ -344,6 +419,11 @@ class StoryboardGenerator:
             return {}
         lines = "\n".join(
             f"{index}. photo: {photo.analysis.caption if photo.analysis else ''} / action: {action}"
+            + (
+                " / the face is hidden: never describe turning around, looking back or showing the face"
+                if _face_hidden(photo)
+                else ""
+            )
             for index, photo, action in items
         )
         prompt = (
@@ -397,6 +477,8 @@ class StoryboardGenerator:
             for name in fields:
                 if name in cut.locked:
                     skipped.append((cut.cut_id, name))
+                elif not _applies_to(cut, name) or (name == "narration" and result.music_only):
+                    continue
                 else:
                     allowed.add(name)
             if allowed:
@@ -427,6 +509,7 @@ class StoryboardGenerator:
                     subject=motions[i].subject,
                     action=motions[i].action,
                     is_person=bool(photo.analysis and photo.analysis.subject_type == "인물"),
+                    face_hidden=_face_hidden(photo),
                 )
 
         for cut, names in targets:
@@ -459,11 +542,16 @@ class StoryboardGenerator:
                 f"항목 {index} | 역할: {cut.role} | 목표: {slot.narration.goal if slot else '자연스러운 연결'} | "
                 f"나레이션 최대 {max_chars(cut.target_sec, rate)}자\n"
                 f"  다시 쓸 항목: {', '.join(sorted(names))}\n"
-                f"  사진 설명: {photo.analysis.caption if photo.analysis else ''}\n"
+                f"  {'영상' if photo.is_video else '사진'} 설명: "
+                f"{photo.analysis.caption if photo.analysis else ''}\n"
                 f"  앞 컷 나레이션: {previous.narration if previous else '없음'}\n"
                 f"  현재 나레이션: {cut.narration}\n"
                 f"  뒤 컷 나레이션: {following.narration if following else '없음'}"
             )
+            if photo.note:
+                lines[-1] += f"\n  제출자 메모: {photo.note}"
+            if _face_hidden(photo):
+                lines[-1] += f"\n  {FACE_HIDDEN_NOTE}"
         prompt = (
             f"메모: {memo or '없음'}\n\n{self._style_block()}\n\n"
             "아래 항목을 새로 쓰세요. 앞뒤 컷과 자연스럽게 이어져야 합니다. "
@@ -536,6 +624,15 @@ class StoryboardGenerator:
             if by_index[i].narration.strip():
                 cut.narration = by_index[i].narration.strip()
         return result
+
+
+def _applies_to(cut: Cut, field_name: str) -> bool:
+    """원본 영상 컷에는 영상 프롬프트가 없고, 원본 소리만 쓰면 나레이션도 없다."""
+    if cut.source_clip is None:
+        return True
+    if field_name == "motion_prompt":
+        return False
+    return not (field_name == "narration" and cut.source_clip.audio == "source")
 
 
 def apply_crop_plan(cut: Cut, plan: Any) -> None:

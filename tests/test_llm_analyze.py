@@ -119,7 +119,11 @@ class TestAnalysis:
 
     def _result(self, subject_type="인물", box=(0.1, 0.1, 0.9, 0.9)):  # noqa: ANN001, ANN202
         return LLMPhotoAnalysis(
-            caption="c", mood="m", subject_type=subject_type, subject_box=list(box) if box else None
+            caption="c",
+            mood="m",
+            subject_type=subject_type,
+            subject_box=list(box) if box else None,
+            face_visible=False,
         )
 
     def test_detector_wins_for_people(self):

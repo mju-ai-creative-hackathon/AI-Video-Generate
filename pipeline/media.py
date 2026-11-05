@@ -53,6 +53,12 @@ class MediaInfo:
     codec: str | None = None
     pix_fmt: str | None = None
     has_audio: bool = False
+    color_transfer: str | None = None
+    has_video: bool = False
+
+    @property
+    def is_hdr(self) -> bool:
+        return self.color_transfer in ("arib-std-b67", "smpte2084")
 
 
 def probe(path: Path) -> MediaInfo:
@@ -61,7 +67,8 @@ def probe(path: Path) -> MediaInfo:
             ffprobe_path(),
             "-v", "error",
             "-show_entries",
-            "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate,pix_fmt",
+            "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate,pix_fmt"
+            ",color_transfer",
             "-of", "json",
             str(path),
         ],
@@ -80,11 +87,13 @@ def probe(path: Path) -> MediaInfo:
         duration=float(data.get("format", {}).get("duration", 0.0)), has_audio=audio is not None
     )
     if video:
+        info.has_video = True
         info.width = video.get("width")
         info.height = video.get("height")
         info.codec = video.get("codec_name")
         info.pix_fmt = video.get("pix_fmt")
         info.fps = _parse_rate(video.get("avg_frame_rate", "0/1"))
+        info.color_transfer = video.get("color_transfer")
     return info
 
 
@@ -99,6 +108,18 @@ def _parse_rate(rate: str) -> float:
 
 def probe_duration(path: Path) -> float:
     return probe(path).duration
+
+
+def extract_frame(video: Path, at_sec: float, out_path: Path) -> Image.Image:
+    """영상의 한 프레임을 저장하고 돌려준다. 회전 정보는 ffmpeg가 적용한다."""
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    run_ffmpeg(
+        ["-ss", f"{max(at_sec, 0.0):.3f}", "-i", str(video), "-frames:v", "1", "-q:v", "2", str(out_path)]
+    )
+    if not out_path.exists():
+        raise MediaError(f"영상에서 프레임을 뽑지 못했습니다: {video} ({at_sec:.2f}초)")
+    with Image.open(out_path) as opened:
+        return opened.convert("RGB")
 
 
 def filter_path(path: Path | str) -> str:

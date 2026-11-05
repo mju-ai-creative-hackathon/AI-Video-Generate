@@ -14,10 +14,14 @@ from ..errors import NotFoundError
 from ..schemas import PhotoAnalysis, PhotoRecord
 from .models import (
     ASSET_DONE,
+    JOB_ACTIVE,
+    JOB_QUEUED,
     CutAsset,
     DatasetSource,
     EditLog,
     FramingExample,
+    Job,
+    Mission,
     Photo,
     Run,
     StoryboardVersion,
@@ -54,8 +58,47 @@ class Repo:
             raise NotFoundError(f"실행을 찾을 수 없습니다: {run_id}")
         return run
 
-    def list_runs(self) -> list[Run]:
-        return list(self.session.scalars(select(Run).order_by(Run.created_at.desc())))
+    def list_runs(self, mission_id: str | None = None) -> list[Run]:
+        stmt = select(Run).order_by(Run.created_at.desc())
+        if mission_id is not None:
+            stmt = stmt.where(Run.mission_id == mission_id)
+        return list(self.session.scalars(stmt))
+
+    # ── missions ──────────────────────────────────────────────────────────
+    def get_mission(self, mission_id: str) -> Mission:
+        mission = self.session.get(Mission, mission_id)
+        if mission is None:
+            raise NotFoundError(f"미션을 찾을 수 없습니다: {mission_id}")
+        return mission
+
+    def list_missions(self) -> list[Mission]:
+        return list(self.session.scalars(select(Mission).order_by(Mission.created_at.desc())))
+
+    # ── jobs ──────────────────────────────────────────────────────────────
+    def get_job(self, job_id: str) -> Job:
+        job = self.session.get(Job, job_id)
+        if job is None:
+            raise NotFoundError(f"작업을 찾을 수 없습니다: {job_id}")
+        return job
+
+    def active_job(self, run_id: str) -> Job | None:
+        stmt = (
+            select(Job)
+            .where(Job.run_id == run_id, Job.status.in_(JOB_ACTIVE))
+            .order_by(Job.created_at.desc())
+            .limit(1)
+        )
+        return self.session.scalars(stmt).first()
+
+    def latest_job(self, run_id: str, kinds: tuple[str, ...] | None = None) -> Job | None:
+        stmt = select(Job).where(Job.run_id == run_id)
+        if kinds:
+            stmt = stmt.where(Job.kind.in_(kinds))
+        return self.session.scalars(stmt.order_by(Job.created_at.desc()).limit(1)).first()
+
+    def next_queued_job(self) -> Job | None:
+        stmt = select(Job).where(Job.status == JOB_QUEUED).order_by(Job.created_at).limit(1)
+        return self.session.scalars(stmt).first()
 
     # ── photos ────────────────────────────────────────────────────────────
     def photos(self, run_id: str) -> list[Photo]:
@@ -135,6 +178,10 @@ class Repo:
             stmt = stmt.where(Video.run_id == run_id)
         return list(self.session.scalars(stmt))
 
+    def latest_video(self, run_id: str) -> Video | None:
+        stmt = select(Video).where(Video.run_id == run_id).order_by(Video.id.desc()).limit(1)
+        return self.session.scalars(stmt).first()
+
     def find_video(self, run_id: str, compose_hash: str) -> Video | None:
         stmt = select(Video).where(Video.run_id == run_id, Video.compose_hash == compose_hash)
         return self.session.scalars(stmt.order_by(Video.id.desc()).limit(1)).first()
@@ -171,4 +218,10 @@ def _to_record(photo: Photo, root: Path) -> PhotoRecord:
         analysis=PhotoAnalysis.model_validate(photo.analysis) if photo.analysis else None,
         excluded_reason=photo.excluded_reason,
         analysis_path=(root / photo.analysis_path) if photo.analysis_path else None,
+        media_type=photo.media_type,  # type: ignore[arg-type]
+        video_path=(root / photo.video_path) if photo.video_path else None,
+        media_duration=photo.media_duration,
+        has_audio=photo.has_audio,
+        note=photo.note,
+        audio_mode=photo.audio_mode,  # type: ignore[arg-type]
     )

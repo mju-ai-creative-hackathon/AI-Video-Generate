@@ -54,6 +54,7 @@ class FakeLLM(LLMClient):
                     "subject_type": "음식",
                     "subject_box": [0.35, 0.35, 0.65, 0.65],
                     "motion_ideas": ["김이 피어오름"],
+                    "face_visible": False,
                 },
                 ensure_ascii=False,
             )
@@ -150,8 +151,9 @@ class FakeComposer:
     def __init__(self) -> None:
         self.calls: list[list[Any]] = []
 
-    def compose(self, cuts, work_dir: Path, out_path: Path) -> Path:  # noqa: ANN001
+    def compose(self, cuts, work_dir: Path, out_path: Path, *, music=None) -> Path:  # noqa: ANN001
         self.calls.append(cuts)
+        self.music = music
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_bytes(b"final-" + str(len(self.calls)).encode())
         return out_path
