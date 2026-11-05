@@ -13,6 +13,7 @@ import com.example.backend.course.domain.CourseRepository;
 import com.example.backend.course.domain.CourseSource;
 import com.example.backend.course.domain.SavedCourseRepository;
 import com.example.backend.place.domain.BookmarkRepository;
+import com.example.backend.diary.domain.DiaryEntryRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,6 +34,7 @@ public class AuthService {
     private final BookmarkRepository bookmarkRepository;
     private final SavedCourseRepository savedCourseRepository;
     private final CourseRepository courseRepository;
+    private final DiaryEntryRepository diaryEntryRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(
@@ -42,7 +44,8 @@ public class AuthService {
             RefreshSessionRepository refreshSessionRepository,
             BookmarkRepository bookmarkRepository,
             SavedCourseRepository savedCourseRepository,
-            CourseRepository courseRepository
+            CourseRepository courseRepository,
+            DiaryEntryRepository diaryEntryRepository
     ) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -51,6 +54,7 @@ public class AuthService {
         this.bookmarkRepository = bookmarkRepository;
         this.savedCourseRepository = savedCourseRepository;
         this.courseRepository = courseRepository;
+        this.diaryEntryRepository = diaryEntryRepository;
     }
 
     @Transactional
@@ -126,9 +130,10 @@ public class AuthService {
     @Transactional
     public void deleteAccount(String authorizationHeader) {
         UUID userId = jwtTokenProvider.parseUserId(extractBearerToken(authorizationHeader));
-        User user = userRepository.findById(userId)
+        User user = userRepository.lockById(userId)
                 .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
 
+        diaryEntryRepository.deleteByUserId(userId);
         refreshSessionRepository.deleteByUserId(userId);
         bookmarkRepository.deleteByUserId(userId);
         savedCourseRepository.deleteByUserId(userId);
