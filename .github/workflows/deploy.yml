@@ -15,6 +15,12 @@ env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: mju-hackathon-backend
 
+# 빌드한 jar를 artifact로 주고받지 않도록 빌드·배포를 한 job에서 처리한다.
+# PR에서는 빌드·테스트만, main push에서는 이어서 이미지 push와 배포까지 한다.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'deploy-prod' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,30 +33,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build & test
         run: ./gradlew build --no-daemon
-      - uses: actions/upload-artifact@v4
-        with:
-          name: jar
-          path: build/libs/*.jar
-          retention-days: 1
-
-  deploy:
-    needs: build
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    concurrency: deploy-prod
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: jar
-          path: build/libs
       - uses: aws-actions/configure-aws-credentials@v4
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - id: ecr
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build & push image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         id: image
         run: |
           IMAGE=${{ steps.ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
@@ -58,6 +50,7 @@ jobs:
           docker push --all-tags ${{ steps.ecr.outputs.registry }}/$ECR_REPOSITORY
           echo "uri=$IMAGE" >> $GITHUB_OUTPUT
       - name: Deploy to EC2 via SSM
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           COMPOSE=$(base64 -w0 deploy/docker-compose.prod.yml)
           CADDY=$(base64 -w0 deploy/Caddyfile)
