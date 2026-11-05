@@ -93,7 +93,7 @@ class CourseRecommendationIntegrationTests extends PostgresIntegrationTest {
 
     @Test
     void createsCoursesAndDropsUnresolvedStops() throws Exception {
-        given(generator.generate(anyString(), any(), any())).willReturn(List.of(
+        given(generator.generate(anyString(), any(), any(), any(), any())).willReturn(List.of(
                 draft("참 좋은 날 고궁 나들이", "경복궁", "없는곳", "광화문"),
                 draft("버려질 코스", "없는곳", "경복궁")));
 
@@ -128,14 +128,14 @@ class CourseRecommendationIntegrationTests extends PostgresIntegrationTest {
 
     @Test
     void mapsGeneratorFailureAndRateLimit() throws Exception {
-        given(generator.generate(anyString(), any(), any())).willThrow(new CourseGenerationException("down"));
+        given(generator.generate(anyString(), any(), any(), any(), any())).willThrow(new CourseGenerationException("down"));
         mockMvc.perform(post("/api/courses/recommendations").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"고궁\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("AI_UNAVAILABLE"));
 
         org.mockito.Mockito.reset(generator);
-        given(generator.generate(anyString(), any(), any())).willReturn(List.of(
+        given(generator.generate(anyString(), any(), any(), any(), any())).willReturn(List.of(
                 draft("a", "경복궁", "광화문"), draft("b", "경복궁", "광화문"), draft("c", "경복궁", "광화문")));
         mockMvc.perform(post("/api/courses/recommendations").header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"고궁\"}")).andExpect(status().isOk());
@@ -146,7 +146,7 @@ class CourseRecommendationIntegrationTests extends PostgresIntegrationTest {
 
     @Test
     void refinesCourseIntoNewCourseVisibleOnlyToOwner() throws Exception {
-        given(generator.generate(anyString(), any(), any())).willReturn(List.of(draft("원본 코스", "경복궁", "광화문")));
+        given(generator.generate(anyString(), any(), any(), any(), any())).willReturn(List.of(draft("원본 코스", "경복궁", "광화문")));
         mockMvc.perform(post("/api/courses/recommendations").header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"고궁\"}")).andExpect(status().isOk());
         Long baseId = courseRepository.findAll().getFirst().getId();
@@ -168,5 +168,25 @@ class CourseRecommendationIntegrationTests extends PostgresIntegrationTest {
         mockMvc.perform(post("/api/courses/" + baseId + "/refinements").header("Authorization", other)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"수정\"}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void usesOriginAsStartWithoutAddingItAsStop() throws Exception {
+        given(generator.plan(anyString())).willReturn(
+                new com.example.backend.course.ai.gemini.CoursePlan("명지대학교 인문캠퍼스", List.of("a", "b")));
+        given(placeLookup.findBest(eq("명지대학교 인문캠퍼스"), any(), any())).willReturn(Optional.of(
+                new KakaoPlace("99", "명지대학교 인문캠퍼스", "서울 서대문구 남가좌동", "서울 서대문구 거북골로 34", 37.5801, 126.9236, "교육", "")));
+        given(placeLookup.findBest(eq("명지대"), any(), any())).willReturn(Optional.of(
+                new KakaoPlace("99", "명지대학교 인문캠퍼스", "서울 서대문구 남가좌동", "", 37.5801, 126.9236, "교육", "")));
+        given(generator.generate(anyString(), eq(37.5801), eq(126.9236), any(), eq("명지대학교 인문캠퍼스")))
+                .willReturn(List.of(draft("서대문 역사 산책", "명지대", "경복궁", "광화문")));
+
+        mockMvc.perform(post("/api/courses/recommendations").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"명지대 끝나고 데이트\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.courses[0].origin.name").value("명지대학교 인문캠퍼스"))
+                .andExpect(jsonPath("$.courses[0].stops.length()").value(2))
+                .andExpect(jsonPath("$.courses[0].stops[0].name").value("경복궁"))
+                .andExpect(jsonPath("$.courses[0].startLeg.fromName").value("명지대학교 인문캠퍼스"));
     }
 }

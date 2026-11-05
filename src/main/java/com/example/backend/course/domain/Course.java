@@ -59,6 +59,46 @@ public class Course {
     @Column(length = 1000)
     private String prompt;
 
+    // 사용자가 출발점으로 말한 곳(예: 명지대). 노는 장소(stops)가 아니라 동선 시작점이다.
+    @Column(name = "origin_name", length = 100)
+    private String originName;
+
+    @Column(name = "origin_address", length = 255)
+    private String originAddress;
+
+    @Column(name = "origin_lat")
+    private Double originLat;
+
+    @Column(name = "origin_lng")
+    private Double originLng;
+
+    public void setOrigin(String name, String address, double lat, double lng) {
+        this.originName = name;
+        this.originAddress = address;
+        this.originLat = lat;
+        this.originLng = lng;
+    }
+
+    public boolean hasOrigin() {
+        return originName != null && originLat != null && originLng != null;
+    }
+
+    public String getOriginName() {
+        return originName;
+    }
+
+    public String getOriginAddress() {
+        return originAddress;
+    }
+
+    public Double getOriginLat() {
+        return originLat;
+    }
+
+    public Double getOriginLng() {
+        return originLng;
+    }
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 

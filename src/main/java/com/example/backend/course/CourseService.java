@@ -13,6 +13,7 @@ import com.example.backend.course.dto.CourseLegResponse;
 import com.example.backend.course.dto.CourseMissionResponse;
 import com.example.backend.course.dto.CourseSaveResponse;
 import com.example.backend.course.dto.CourseStopResponse;
+import com.example.backend.course.dto.CourseOriginResponse;
 import com.example.backend.course.dto.CourseSummary;
 import com.example.backend.course.geo.DirectionLinks;
 import com.example.backend.course.geo.GeoPoint;
@@ -135,7 +136,15 @@ public class CourseService {
             legs.add(leg(from.getSeq(), from.getName(), point(from), to.getSeq(), to.getName(), point(to)));
         }
         CourseLegResponse startLeg = null;
-        if (user != null && !stops.isEmpty()) {
+        CourseOriginResponse origin = course.hasOrigin()
+                ? new CourseOriginResponse(course.getOriginName(), course.getOriginAddress(),
+                        course.getOriginLat(), course.getOriginLng())
+                : null;
+        if (origin != null && !stops.isEmpty()) {
+            CourseStop first = stops.getFirst();
+            startLeg = leg(0, origin.name(), new GeoPoint(origin.lat(), origin.lng()),
+                    first.getSeq(), first.getName(), point(first));
+        } else if (user != null && !stops.isEmpty()) {
             CourseStop first = stops.getFirst();
             startLeg = leg(0, CURRENT_LOCATION_NAME, user, first.getSeq(), first.getName(), point(first));
         }
@@ -151,6 +160,7 @@ public class CourseService {
                 thumbnailUrl(stops),
                 distanceToFirstStop(stops, user),
                 course.getPrompt(),
+                origin,
                 stops.stream().map(CourseStopResponse::of).toList(),
                 legs,
                 startLeg,

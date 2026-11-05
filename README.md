@@ -251,6 +251,7 @@ Authorization: Bearer <accessToken>
 | PUT/DELETE | `/api/courses/{id}/save` | 코스 저장/해제 (로그인) |
 | GET | `/api/courses/saved` | 저장한 코스 (로그인) |
 
+- 출발지: 프롬프트에 "명지대 끝나고/○○에서 출발"처럼 출발점이 있으면 `origin`{name,address,lat,lng}으로 내려주고, `startLeg`는 출발지 → 1번 장소다. 출발지는 `stops`(노는 장소)에 들어가지 않는다. 출발지가 없으면 `startLeg`는 내 위치 → 1번 장소.
 - 길찾기: `naverMapUrl`(`nmap://route/walk|public?...&appname=com.mju.hackathon.moment`)을 열고, 네이버지도 미설치 시 `googleMapsUrl`로 대체. iOS `Info.plist` `LSApplicationQueriesSchemes`에 `nmap` 추가 필요.
 - 1.5km 이하 구간은 도보(`WALK`), 초과는 대중교통(`PUBLIC`). 거리·시간은 직선거리 기반 추정치.
 - AI 코스는 만든 사람에게만 보인다. 숏폼 프로젝트 생성 시 `courseId`, `missionIds`를 넘기면 촬영 미션이 AI 편집 힌트로 전달된다.

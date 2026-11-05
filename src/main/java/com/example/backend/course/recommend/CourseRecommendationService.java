@@ -8,6 +8,7 @@ import com.example.backend.course.ai.gemini.AiMissionDraft;
 import com.example.backend.course.ai.gemini.AiStopDraft;
 import com.example.backend.course.ai.gemini.CourseGenerationException;
 import com.example.backend.course.ai.gemini.CourseGenerator;
+import com.example.backend.course.ai.gemini.CoursePlan;
 import com.example.backend.course.ai.kakao.ImageLookup;
 import com.example.backend.course.ai.kakao.KakaoPlace;
 import com.example.backend.course.ai.kakao.PlaceLookup;
@@ -91,16 +92,27 @@ public class CourseRecommendationService {
 
         checkRateLimit(userId);
 
+        // 출발지("명지대 끝나고")가 있으면 그 좌표를 동선 시작점으로 쓴다. 출발지는 stops 에 넣지 않는다.
+        CoursePlan plan = generator.plan(cleanPrompt);
+        KakaoPlace originPlace = plan == null || plan.originQuery() == null ? null
+                : placeLookup.findBest(plan.originQuery(), user == null ? null : user.lat(), user == null ? null : user.lng())
+                        .orElse(null);
+        GeoPoint start = originPlace != null ? new GeoPoint(originPlace.lat(), originPlace.lng()) : user;
+
         List<AiCourseDraft> drafts;
         try {
-            drafts = generator.generate(cleanPrompt, user == null ? null : user.lat(), user == null ? null : user.lng());
+            drafts = generator.generate(cleanPrompt, start == null ? null : start.lat(), start == null ? null : start.lng(),
+                    plan, originPlace == null ? null : originPlace.name());
         } catch (CourseGenerationException e) {
             log.warn("AI 코스 생성 실패: {}", e.getMessage());
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
                     "AI 추천을 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
         }
 
-        List<List<ResolvedStop>> resolved = resolveAll(drafts.stream().limit(MAX_COURSES).toList(), user);
+        List<List<ResolvedStop>> resolved = resolveAll(drafts.stream().limit(MAX_COURSES).toList(), start);
+        if (originPlace != null) {
+            resolved.forEach(r -> r.removeIf(stop -> stop.place().id().equals(originPlace.id())));
+        }
         // 장소가 3곳 이상 남은 코스가 하나라도 있으면 2곳짜리 코스는 버린다.
         int minStops = resolved.stream().anyMatch(r -> r.size() >= 3) ? 3 : 2;
 
@@ -111,7 +123,9 @@ public class CourseRecommendationService {
                 if (stops.size() < minStops) {
                     continue;
                 }
-                Course course = courseRepository.save(build(userId, cleanPrompt, drafts.get(i), stops));
+                Course built = build(userId, cleanPrompt, drafts.get(i), stops);
+                if (originPlace != null) setOrigin(built, originPlace);
+                Course course = courseRepository.save(built);
                 details.add(courseService.toDetail(course, user, userId));
             }
             return details;
@@ -131,19 +145,23 @@ public class CourseRecommendationService {
         String cleanPrompt = prompt.strip();
         checkRateLimit(userId);
 
-        record Base(String json, String originalPrompt) {
+        record Base(String json, String originalPrompt, String originName, String originAddress,
+                    Double originLat, Double originLng) {
         }
         Base base = tx.execute(status -> {
             Course course = courseRepository.findById(courseId)
                     .filter(c -> c.isVisibleTo(userId))
                     .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
-            return new Base(baseJson(course), course.getPrompt());
+            return new Base(baseJson(course), course.getPrompt(), course.getOriginName(), course.getOriginAddress(),
+                    course.getOriginLat(), course.getOriginLng());
         });
 
         AiCourseDraft draft;
         try {
+            boolean hasOrigin = base.originLat() != null && base.originLng() != null;
             draft = generator.refine(base.json(), cleanPrompt,
-                    user == null ? null : user.lat(), user == null ? null : user.lng());
+                    hasOrigin ? base.originLat() : user == null ? null : user.lat(),
+                    hasOrigin ? base.originLng() : user == null ? null : user.lng());
         } catch (CourseGenerationException e) {
             log.warn("AI 코스 수정 실패: {}", e.getMessage());
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
@@ -156,7 +174,11 @@ public class CourseRecommendationService {
         }
         String history = base.originalPrompt() == null ? cleanPrompt : base.originalPrompt() + " / 수정: " + cleanPrompt;
         return tx.execute(status -> {
-            Course course = courseRepository.save(build(userId, history, draft, stops));
+            Course built = build(userId, history, draft, stops);
+            if (base.originName() != null && base.originLat() != null && base.originLng() != null) {
+                built.setOrigin(base.originName(), base.originAddress(), base.originLat(), base.originLng());
+            }
+            Course course = courseRepository.save(built);
             return courseService.toDetail(course, user, userId);
         });
     }
@@ -253,6 +275,11 @@ public class CourseRecommendationService {
         return place
                 .filter(p -> GeoUtils.isInSeoul(new GeoPoint(p.lat(), p.lng())))
                 .map(p -> new ResolvedStop(stop, p, imageLookup.findImageUrl(p.name()).orElse(null)));
+    }
+
+    private static void setOrigin(Course course, KakaoPlace p) {
+        String address = p.roadAddress() == null || p.roadAddress().isBlank() ? p.address() : p.roadAddress();
+        course.setOrigin(truncate(p.name(), 100), truncate(address, 255), p.lat(), p.lng());
     }
 
     private static final java.util.regex.Pattern PUBLIC_OFFICE = java.util.regex.Pattern.compile(
