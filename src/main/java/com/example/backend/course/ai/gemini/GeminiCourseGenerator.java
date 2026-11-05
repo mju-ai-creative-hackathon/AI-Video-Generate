@@ -64,7 +64,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
 
             규칙:
             1. Google 검색으로 확인한, 지금 실제로 운영 중인 서울의 장소만 사용한다. 폐업·휴업·장기 공사 중이거나 존재가 불확실한 곳은 넣지 않는다.
-            2. 코스 개수는 사용자 메시지의 지시를 따른다(지시가 없으면 서로 다른 분위기·동선으로 3개). 각 코스는 장소를 도보 또는 대중교통으로 효율적으로 이동하는 방문 순서대로 나열한다. 사용자가 장소 수를 직접 정하지 않았다면 당일 코스는 보통 4곳(최소 3곳, 최대 5곳)으로 짜고, 1박 이상이면 날마다 3~4곳(전체 8곳 이하)으로 짠다. 숙소는 장소 수에 포함하되 숙소만으로 하루를 채우지 않는다.
+            2. 코스 개수는 사용자 메시지의 지시를 따른다(지시가 없으면 서로 다른 분위기·동선으로 3개). 각 코스는 장소를 도보 또는 대중교통으로 효율적으로 이동하는 방문 순서대로 나열한다. 사용자가 장소 수를 직접 정하지 않았다면 당일 코스는 보통 4곳(최소 3곳, 최대 5곳)으로 짜고, 1박 이상이면 날마다 3~4곳(전체 8곳 이하)으로 짠다. 숙소는 장소 수에 포함하되 숙소만으로 하루를 채우지 않는다. 사용자가 출발점이나 이전 일정으로 언급한 곳(학교·집·회사·역 등, 예: "명지대 끝나고")은 코스 장소에 넣지 않고 그 근처에서 시작한다.
             3. 사용자 위치(위도/경도)가 주어지면 그 근처에서 시작한다. 요청한 소요 시간·예산·분위기·날씨·동행을 반드시 지킨다. 비 오는 날이면 실내 위주로 짠다.
             4. title 은 15자 안팎의 짧고 감성적인 한국어 제목이다. 예: "참 좋은 날 고궁 나들이".
             5. summary 는 코스 전체를 1~2문장으로 소개한다. region 은 대표 지역명(예: "종로", "성수")이다.
@@ -366,7 +366,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
         courseProps.put("region", nullableStr);
         courseProps.put("totalMinutes", integer);
         courseProps.put("estimatedCost", nullableInt);
-        courseProps.put("stops", Map.of("type", "array", "items", stop, "minItems", 3, "maxItems", MAX_STOPS));
+        courseProps.put("stops", Map.of("type", "array", "items", stop, "minItems", 4, "maxItems", MAX_STOPS));
         // maxItems 를 크게 주면 Gemini 가 스키마를 INVALID_ARGUMENT 로 거부하므로 개수는 파싱 단계에서 자른다.
         courseProps.put("missions", Map.of("type", "array", "items", mission, "minItems", 2));
         Map<String, Object> course = Map.of("type", "object", "properties", courseProps,

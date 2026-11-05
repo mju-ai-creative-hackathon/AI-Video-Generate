@@ -101,12 +101,14 @@ public class CourseRecommendationService {
         }
 
         List<List<ResolvedStop>> resolved = resolveAll(drafts.stream().limit(MAX_COURSES).toList(), user);
+        // 장소가 3곳 이상 남은 코스가 하나라도 있으면 2곳짜리 코스는 버린다.
+        int minStops = resolved.stream().anyMatch(r -> r.size() >= 3) ? 3 : 2;
 
         List<CourseDetail> result = tx.execute(status -> {
             List<CourseDetail> details = new ArrayList<>();
             for (int i = 0; i < resolved.size(); i++) {
                 List<ResolvedStop> stops = resolved.get(i);
-                if (stops.size() < 2) {
+                if (stops.size() < minStops) {
                     continue;
                 }
                 Course course = courseRepository.save(build(userId, cleanPrompt, drafts.get(i), stops));
