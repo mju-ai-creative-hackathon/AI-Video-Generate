@@ -247,6 +247,7 @@ Authorization: Bearer <accessToken>
 | GET | `/api/courses?region=&lat=&lng=&page=&size=` | 기본 추천 코스 목록. `distanceMeters`=내 위치→첫 장소 |
 | GET | `/api/courses/{id}?lat=&lng=` | 코스 상세: `stops`, `legs`(구간 거리·시간·`naverMapUrl`·`googleMapsUrl`), `startLeg`(현재 위치→1번), `missions` |
 | POST | `/api/courses/recommendations` | `{prompt, lat?, lng?}` → AI 맞춤 코스 최대 3개(상세 형식). 로그인 필요, 10~30초 소요, 하루 20회 |
+| POST | `/api/courses/{id}/refinements` | `{prompt, lat?, lng?}` → 기존 코스(기본/내 AI 코스)를 프롬프트대로 고친 **새 AI 코스 1개**(상세 형식). 원본 유지. 로그인 필요 |
 | PUT/DELETE | `/api/courses/{id}/save` | 코스 저장/해제 (로그인) |
 | GET | `/api/courses/saved` | 저장한 코스 (로그인) |
 

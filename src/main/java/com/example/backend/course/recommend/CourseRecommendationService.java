@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -60,10 +61,11 @@ public class CourseRecommendationService {
     private final CourseService courseService;
     private final TransactionTemplate tx;
     private final int dailyRequestLimit;
+    private final ObjectMapper mapper;
 
     public CourseRecommendationService(AuthService authService, CourseGenerator generator, PlaceLookup placeLookup,
                                        ImageLookup imageLookup, CourseRepository courseRepository,
-                                       CourseService courseService, TransactionTemplate tx,
+                                       CourseService courseService, TransactionTemplate tx, ObjectMapper mapper,
                                        @Value("${app.course.ai-daily-limit:${COURSE_AI_DAILY_LIMIT:20}}") int dailyRequestLimit) {
         this.authService = authService;
         this.generator = generator;
@@ -73,6 +75,7 @@ public class CourseRecommendationService {
         this.courseService = courseService;
         this.tx = tx;
         this.dailyRequestLimit = dailyRequestLimit;
+        this.mapper = mapper;
     }
 
     public record RecommendResponse(List<CourseDetail> courses) {
@@ -86,12 +89,7 @@ public class CourseRecommendationService {
         GeoPoint user = userLocation(lat, lng);
         String cleanPrompt = prompt.strip();
 
-        long recent = courseRepository.countBySourceAndOwnerIdAndCreatedAtAfter(
-                CourseSource.AI, userId, Instant.now().minus(Duration.ofDays(1)));
-        if (recent >= (long) dailyRequestLimit * COURSES_PER_REQUEST) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED",
-                    "오늘 AI 추천 횟수를 모두 사용했어요. 내일 다시 시도해 주세요.");
-        }
+        checkRateLimit(userId);
 
         List<AiCourseDraft> drafts;
         try {
@@ -122,6 +120,82 @@ public class CourseRecommendationService {
                     "조건에 맞는 서울 코스를 찾지 못했어요. 요청을 조금 바꿔 다시 시도해 주세요.");
         }
         return new RecommendResponse(result);
+    }
+
+    /** 기존 코스(기본 코스 또는 본인 AI 코스)를 프롬프트로 고친 새 AI 코스를 만든다. 원본은 그대로 둔다. */
+    public CourseDetail refine(String authorization, Long courseId, String prompt, Double lat, Double lng) {
+        UUID userId = authService.getCurrentUser(authorization).id();
+        GeoPoint user = userLocation(lat, lng);
+        String cleanPrompt = prompt.strip();
+        checkRateLimit(userId);
+
+        record Base(String json, String originalPrompt) {
+        }
+        Base base = tx.execute(status -> {
+            Course course = courseRepository.findById(courseId)
+                    .filter(c -> c.isVisibleTo(userId))
+                    .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
+            return new Base(baseJson(course), course.getPrompt());
+        });
+
+        AiCourseDraft draft;
+        try {
+            draft = generator.refine(base.json(), cleanPrompt,
+                    user == null ? null : user.lat(), user == null ? null : user.lng());
+        } catch (CourseGenerationException e) {
+            log.warn("AI 코스 수정 실패: {}", e.getMessage());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
+                    "코스를 고치지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
+        List<ResolvedStop> stops = resolveAll(List.of(draft), user).getFirst();
+        if (stops.size() < 2) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "AI_NO_RESULT",
+                    "요청대로 고친 코스를 찾지 못했어요. 표현을 바꿔 다시 시도해 주세요.");
+        }
+        String history = base.originalPrompt() == null ? cleanPrompt : base.originalPrompt() + " / 수정: " + cleanPrompt;
+        return tx.execute(status -> {
+            Course course = courseRepository.save(build(userId, history, draft, stops));
+            return courseService.toDetail(course, user, userId);
+        });
+    }
+
+    private void checkRateLimit(UUID userId) {
+        long recent = courseRepository.countBySourceAndOwnerIdAndCreatedAtAfter(
+                CourseSource.AI, userId, Instant.now().minus(Duration.ofDays(1)));
+        if (recent >= (long) dailyRequestLimit * COURSES_PER_REQUEST) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED",
+                    "오늘 AI 추천 횟수를 모두 사용했어요. 내일 다시 시도해 주세요.");
+        }
+    }
+
+    private String baseJson(Course course) {
+        Map<String, Object> root = new java.util.LinkedHashMap<>();
+        root.put("title", course.getTitle());
+        root.put("summary", course.getSummary());
+        root.put("region", course.getRegion());
+        root.put("totalMinutes", course.getTotalMinutes());
+        root.put("estimatedCost", course.getEstimatedCost());
+        root.put("stops", course.getStops().stream().map(s -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("seq", s.getSeq());
+            m.put("day", s.getDay());
+            m.put("name", s.getName());
+            m.put("searchQuery", s.getName());
+            m.put("description", s.getDescription());
+            m.put("stayMinutes", s.getStayMinutes());
+            m.put("startTime", s.getStartTime() == null ? null : s.getStartTime().toString());
+            return m;
+        }).toList());
+        root.put("missions", course.getMissions().stream().map(mi -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("stopSeq", mi.getStopSeq());
+            m.put("kind", mi.getKind().name());
+            m.put("title", mi.getTitle());
+            m.put("guide", mi.getGuide());
+            m.put("durationSec", mi.getDurationSec());
+            return m;
+        }).toList());
+        return mapper.writeValueAsString(root);
     }
 
     /** 코스별·장소별 카카오 조회를 가상 스레드로 병렬 처리한다. 서울 밖이거나 못 찾은 장소는 버린다. */

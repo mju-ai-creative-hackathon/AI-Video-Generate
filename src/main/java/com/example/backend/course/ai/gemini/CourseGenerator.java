@@ -11,4 +11,11 @@ public interface CourseGenerator {
      * @throws CourseGenerationException 설정 누락, 업스트림 실패, 타임아웃, 유효하지 않은 출력
      */
     List<AiCourseDraft> generate(String prompt, Double userLat, Double userLng);
+
+    /**
+     * 기존 코스(baseCourseJson)를 사용자 요청에 맞게 고친 코스 1개를 만든다.
+     *
+     * @throws CourseGenerationException 설정 누락, 업스트림 실패, 타임아웃, 유효하지 않은 출력
+     */
+    AiCourseDraft refine(String baseCourseJson, String prompt, Double userLat, Double userLng);
 }

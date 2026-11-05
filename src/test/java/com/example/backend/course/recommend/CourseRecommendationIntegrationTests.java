@@ -143,4 +143,30 @@ class CourseRecommendationIntegrationTests extends PostgresIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"고궁\"}"))
                 .andExpect(status().isTooManyRequests());
     }
+
+    @Test
+    void refinesCourseIntoNewCourseVisibleOnlyToOwner() throws Exception {
+        given(generator.generate(anyString(), any(), any())).willReturn(List.of(draft("원본 코스", "경복궁", "광화문")));
+        mockMvc.perform(post("/api/courses/recommendations").header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"고궁\"}")).andExpect(status().isOk());
+        Long baseId = courseRepository.findAll().getFirst().getId();
+
+        given(generator.refine(anyString(), eq("광화문 빼고 경복궁만"), any(), any()))
+                .willReturn(draft("고친 코스", "광화문", "경복궁"));
+        mockMvc.perform(post("/api/courses/" + baseId + "/refinements").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"광화문 빼고 경복궁만\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("고친 코스"))
+                .andExpect(jsonPath("$.source").value("AI"))
+                .andExpect(jsonPath("$.stops[0].name").value("광화문"))
+                .andExpect(jsonPath("$.stops[0].day").value(1));
+        assertThat(courseRepository.count()).isEqualTo(2);
+        org.mockito.Mockito.verify(generator).refine(org.mockito.ArgumentMatchers.contains("원본 코스"),
+                eq("광화문 빼고 경복궁만"), any(), any());
+
+        String other = "Bearer " + authService.signup(new SignupRequest("rec2@example.com", "남", "password123")).accessToken();
+        mockMvc.perform(post("/api/courses/" + baseId + "/refinements").header("Authorization", other)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"수정\"}"))
+                .andExpect(status().isNotFound());
+    }
 }

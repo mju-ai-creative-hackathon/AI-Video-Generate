@@ -3,6 +3,7 @@ package com.example.backend.course.recommend;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/courses/recommendations")
+@RequestMapping("/api/courses")
 public class CourseRecommendationController {
     private final CourseRecommendationService service;
 
@@ -27,10 +28,19 @@ public class CourseRecommendationController {
     ) {
     }
 
-    @PostMapping
+    @PostMapping("/recommendations")
     public CourseRecommendationService.RecommendResponse recommend(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody RecommendRequest request) {
         return service.recommend(authorization, request.prompt(), request.lat(), request.lng());
+    }
+
+    /** 기존 코스를 프롬프트로 고친 새 AI 코스 1개를 돌려준다. */
+    @PostMapping("/{id}/refinements")
+    public com.example.backend.course.dto.CourseDetail refine(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable Long id,
+            @Valid @RequestBody RecommendRequest request) {
+        return service.refine(authorization, id, request.prompt(), request.lat(), request.lng());
     }
 }
