@@ -73,6 +73,19 @@ docker compose down
 
 회원가입과 로그인은 `accessToken`, `tokenType`, `expiresIn`, `user`를 반환합니다.
 
+### iOS Google 로그인
+
+`POST /api/auth/google`
+
+```json
+{
+  "idToken": "GOOGLE_ID_TOKEN_FROM_IOS"
+}
+```
+
+iOS Google Sign-In SDK에서 받은 ID Token을 전달합니다. 백엔드 설정과 Google Cloud 클라이언트 구성은
+[`docs/GOOGLE_OAUTH.md`](docs/GOOGLE_OAUTH.md)를 참고하세요.
+
 ### 내 정보 조회
 
 `GET /api/auth/me`

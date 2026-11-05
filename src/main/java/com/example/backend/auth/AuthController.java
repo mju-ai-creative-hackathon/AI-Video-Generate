@@ -1,6 +1,7 @@
 package com.example.backend.auth;
 
 import com.example.backend.auth.dto.AuthResponse;
+import com.example.backend.auth.dto.GoogleLoginRequest;
 import com.example.backend.auth.dto.LoginRequest;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
@@ -13,15 +14,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.view.RedirectView;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
+    private final GoogleLoginService googleLoginService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, GoogleLoginService googleLoginService) {
         this.authService = authService;
+        this.googleLoginService = googleLoginService;
     }
 
     @PostMapping("/signup")
@@ -39,8 +41,8 @@ public class AuthController {
         return authService.getCurrentUser(authorization);
     }
 
-    @GetMapping("/google")
-    public RedirectView googleLogin() {
-        return new RedirectView("/oauth2/authorization/google");
+    @PostMapping("/google")
+    public AuthResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return googleLoginService.login(request.idToken());
     }
 }

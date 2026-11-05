@@ -1,39 +1,57 @@
-# Google 로그인 설정
+# iOS Google 로그인 설정
 
-## 로그인 흐름
+## 인증 흐름
 
-1. 프론트엔드가 브라우저를 `GET http://localhost:8080/api/auth/google`로 이동시킵니다.
-2. 백엔드는 Google 인증 화면으로 리다이렉트합니다.
-3. Google은 인증 후 백엔드의 `/login/oauth2/code/google`로 돌아옵니다.
-4. 백엔드는 검증된 Google 이메일로 사용자를 생성하거나 기존 계정에 연결하고 자체 JWT를 발급합니다.
-5. 성공 시 프론트엔드의 `/oauth/callback`으로, 실패 시 `/login?error=...`로 리다이렉트합니다.
+1. iOS 앱이 Google Sign-In SDK로 사용자를 인증합니다.
+2. iOS 앱이 Google에서 받은 ID Token을 백엔드에 HTTPS로 전송합니다.
+3. 백엔드는 Google 공개키로 토큰 서명을 검증합니다.
+4. 백엔드는 토큰의 발급자(`iss`), 만료(`exp`), 대상(`aud`), 이메일 인증 여부를 검증합니다.
+5. 검증된 Google 계정을 신규 생성하거나 같은 이메일의 기존 계정과 연결합니다.
+6. 백엔드가 서비스 자체 JWT를 iOS 앱에 JSON으로 반환합니다.
 
-성공 리다이렉트의 기본 형식은 다음과 같습니다.
+웹 프론트엔드 URL로 리다이렉트하는 과정은 없습니다.
 
-```text
-http://localhost:3000/oauth/callback?accessToken=...&tokenType=Bearer&expiresIn=3600
+## 백엔드 API
+
+```http
+POST /api/auth/google
+Content-Type: application/json
+
+{
+  "idToken": "GOOGLE_ID_TOKEN_FROM_IOS"
+}
 ```
 
-프론트엔드는 `accessToken`을 읽은 직후 브라우저 history API를 사용해 URL에서 토큰 파라미터를 제거해야 합니다.
+성공 응답은 일반 로그인과 동일합니다.
+
+```json
+{
+  "accessToken": "SERVICE_JWT",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": "...",
+    "email": "user@example.com",
+    "name": "사용자",
+    "profileImageUrl": "https://...",
+    "createdAt": "..."
+  }
+}
+```
 
 ## Google Cloud Console
 
-Google Cloud Console에서 웹 애플리케이션 OAuth 2.0 클라이언트를 만들고 다음 값을 승인된 리디렉션 URI에 등록합니다.
+같은 Google Cloud 프로젝트에 클라이언트 두 개가 필요합니다.
 
-```text
-http://localhost:8080/login/oauth2/code/google
-```
+1. `iOS` 유형: Xcode 프로젝트의 실제 Bundle Identifier를 입력합니다.
+2. `웹 애플리케이션` 유형: 백엔드 인증용 Server Client ID로 사용합니다.
 
-운영 환경에서는 실제 백엔드 HTTPS 주소를 별도로 등록해야 합니다. 등록한 값은 `GOOGLE_REDIRECT_URI`와 정확히 일치해야 합니다.
-
-## 환경 변수
+웹 애플리케이션 유형에서 발급된 Client ID를 백엔드 환경 변수에 설정합니다. 이 흐름에서는 백엔드가 Google Client Secret을 사용하지 않습니다.
 
 ```dotenv
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8080/login/oauth2/code/google
-FRONTEND_OAUTH_SUCCESS_URL=http://localhost:3000/oauth/callback
-FRONTEND_OAUTH_FAILURE_URL=http://localhost:3000/login
+GOOGLE_SERVER_CLIENT_ID=191486826471-hj88egpu3at3trb0uo5m08q7md915t5a.apps.googleusercontent.com
 ```
 
-`.env` 파일은 Spring Boot가 자동으로 읽지 않으므로 IDE 실행 구성이나 셸 환경 변수로 전달해야 합니다.
+iOS 앱에는 iOS Client ID와 Server Client ID를 모두 설정해야 합니다. iOS 앱이 요청한 ID Token의 `aud` 값은 백엔드의 `GOOGLE_SERVER_CLIENT_ID`와 일치해야 합니다.
+
+현재 발급된 Server Client ID는 로컬 기본값으로도 설정되어 있습니다. 운영 환경에서 별도 Google Cloud 프로젝트를 사용하게 되면 `GOOGLE_SERVER_CLIENT_ID` 환경 변수로 기본값을 덮어쓸 수 있습니다. Client Secret은 이 인증 흐름에서 사용하지 않습니다.

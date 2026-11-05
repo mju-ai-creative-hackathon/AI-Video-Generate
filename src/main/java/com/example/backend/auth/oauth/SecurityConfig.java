@@ -9,18 +9,10 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            GoogleOAuth2SuccessHandler successHandler
-    ) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(successHandler)
-                        .failureHandler((request, response, exception) -> response.sendRedirect(
-                                successHandler.failureRedirect("oauth2_authentication_failed")
-                        )))
                 .build();
     }
 }
