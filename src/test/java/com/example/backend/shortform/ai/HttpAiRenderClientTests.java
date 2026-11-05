@@ -42,7 +42,7 @@ class HttpAiRenderClientTests {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         executor = Executors.newCachedThreadPool();
         server.setExecutor(executor);
-        server.createContext("/api/renders", exchange -> {
+        server.createContext("/api/", exchange -> {
             requests.incrementAndGet();
             requestMethod.set(exchange.getRequestMethod());
             requestPath.set(exchange.getRequestURI().getPath());
@@ -176,7 +176,9 @@ class HttpAiRenderClientTests {
         var adapter = configured();
         responseStatus.set(200);
         for (String body : new String[]{"{\"status\":\"UNKNOWN\"}", "{\"status\":123}",
-                "{\"status\":\"SUCCEEDED\"}",
+                "{\"status\":\"PROCESSING\",\"phase\":\"UNKNOWN\"}",
+                "{\"status\":\"PROCESSING\",\"storyboardVersion\":\"2\"}",
+                "{\"status\":\"SUCCEEDED\",\"thumbnailUrl\":\"https://cdn.example/thumb.jpg\"}",
                 "{\"status\":\"SUCCEEDED\",\"videoUrl\":\"javascript:alert(1)\"}",
                 "{\"status\":\"SUCCEEDED\",\"videoUrl\":\"http://localhost/video.mp4\"}",
                 "{\"status\":\"SUCCEEDED\",\"videoUrl\":\"https://user:secret@example.com/video.mp4\"}",
@@ -202,6 +204,56 @@ class HttpAiRenderClientTests {
         }
         responseBody.set("{\"status\":\"SUCCEEDED\",\"videoUrl\":\"http://localhost/video.mp4\"}");
         assertEquals("http://localhost/video.mp4", client(true, baseUrl, "", 5, true).poll("ai-job-1").videoUrl());
+    }
+
+    @Test void readsReviewPhaseProgressAndCompletionWithoutPublicUrl() {
+        var adapter = configured();
+        responseStatus.set(200);
+        responseBody.set("{\"status\":\"AWAITING_REVIEW\",\"phase\":\"AWAITING_REVIEW\",\"busy\":true,"
+                + "\"stage\":\"script\",\"message\":\"대본 재생성 중\",\"current\":2,\"total\":5,"
+                + "\"storyboardVersion\":3,\"error\":null}");
+        var review = adapter.poll("ai-job-1");
+        assertEquals("AWAITING_REVIEW", review.status());
+        assertEquals("AWAITING_REVIEW", review.phase());
+        assertTrue(review.busy());
+        assertEquals("script", review.progress().stage());
+        assertEquals(2, review.progress().current());
+        assertEquals(3, review.storyboardVersion());
+        responseBody.set("{\"status\":\"SUCCEEDED\",\"phase\":\"DONE\",\"storyboardVersion\":4}");
+        var done = adapter.poll("ai-job-1");
+        assertEquals("SUCCEEDED", done.status());
+        assertNull(done.videoUrl()); // 백엔드가 /renders/{id}/video에서 내려받는다
+    }
+
+    @Test void proxiesReviewResponsesAndTreatsRepeatedRenderStartAsSuccess() {
+        var adapter = configured();
+        responseStatus.set(409);
+        responseBody.set("{\"error\":{\"code\":\"stale_base_version\",\"message\":\"m\",\"changes\":[]}}");
+        var conflict = adapter.saveStoryboard("ai-job-1", "{\"base_version\":1}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(409, conflict.status());
+        assertEquals("PUT", requestMethod.get());
+        assertEquals("/api/runs/ai-job-1/storyboard", requestPath.get());
+        assertEquals("Bearer provider-token", authorization.get());
+
+        responseStatus.set(200);
+        responseBody.set("{\"version\":2}");
+        assertTrue(adapter.approve("ai-job-1", 2, true).ok());
+        assertEquals("/api/runs/ai-job-1/approve", requestPath.get());
+        assertTrue(requestBody.get().contains("\"accept_warnings\":true"));
+
+        responseStatus.set(409);
+        responseBody.set("{\"error\":{\"code\":\"job_in_progress\",\"message\":\"busy\"}}");
+        assertDoesNotThrow(() -> adapter.startRender("ai-job-1"));
+        responseBody.set("{\"error\":{\"code\":\"approval_required\",\"message\":\"no\"}}");
+        assertEquals("AI_APPROVAL_REQUIRED",
+                assertThrows(AiRenderException.class, () -> adapter.startRender("ai-job-1")).getCode());
+
+        responseStatus.set(401);
+        assertEquals("AI_REJECTED", assertThrows(AiRenderException.class,
+                () -> adapter.getStoryboard("ai-job-1", null)).getCode());
+        responseStatus.set(503);
+        assertEquals("AI_UNAVAILABLE", assertThrows(AiRenderException.class,
+                () -> adapter.getStoryboard("ai-job-1", null)).getCode());
     }
 
     @Test void timesOutEvenWhenTheServerHasAlreadySentResponseHeaders() {

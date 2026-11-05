@@ -24,14 +24,26 @@ public final class ShortformDtos {
                     asset.kind, asset.missionId, "/api/shortforms/" + asset.projectId + "/assets/" + asset.id + "/content");
         }
     }
+    /**
+     * 검토 흐름의 필드(phase 이후)는 기존 앱이 무시해도 되도록 뒤에 붙였다.
+     * videoUrl은 백엔드가 보관한 완성본이면 조회할 때마다 새로 서명한 URL이다.
+     */
     public record RenderView(UUID id, UUID projectId, RenderStatus status, VideoStyle style, VideoMood mood,
                              String musicId, String videoUrl, String thumbnailUrl, String errorCode,
-                             String errorMessage, Instant createdAt, Instant updatedAt) {
-        static RenderView from(RenderJob job) {
+                             String errorMessage, Instant createdAt, Instant updatedAt,
+                             RenderPhase phase, boolean reviewBusy, Progress progress,
+                             Integer storyboardVersion, String reviewError) {
+        static RenderView from(RenderJob job, String videoUrl) {
+            Progress progress = job.progressStage == null && job.progressMessage == null ? null
+                    : new Progress(job.progressStage, job.progressMessage, job.progressCurrent, job.progressTotal);
             return new RenderView(job.id, job.projectId, job.status, job.style, job.mood, job.musicId,
-                    job.videoUrl, job.thumbnailUrl, job.errorCode, job.errorMessage, job.createdAt, job.updatedAt);
+                    videoUrl, job.thumbnailUrl, job.errorCode, job.errorMessage, job.createdAt, job.updatedAt,
+                    job.phase, Boolean.TRUE.equals(job.reviewBusy), progress, job.storyboardVersion,
+                    job.reviewError);
         }
     }
+    public record Progress(String stage, String message, Integer current, Integer total) {}
+    public record ApproveRequest(@NotNull @Positive Integer version, Boolean acceptWarnings) {}
     public record ProjectView(UUID id, String title, List<AssetView> assets, RenderView latestRender, Instant createdAt,
                               Long courseId, List<Long> missionIds) {}
     public record ProjectPage(List<ProjectView> items, int page, int size, long totalElements, int totalPages, boolean hasNext) {}
