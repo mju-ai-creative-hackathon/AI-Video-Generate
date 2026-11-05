@@ -15,7 +15,7 @@ docker compose ps
 
 기본 접속 정보:
 
-- 주소: `localhost:5432`
+- 주소: `localhost:5433`
 - 데이터베이스: `hackathon`
 - 사용자: `postgres`
 - 비밀번호: `postgres`
