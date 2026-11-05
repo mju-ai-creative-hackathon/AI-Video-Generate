@@ -51,6 +51,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
     private static final Pattern HH_MM = Pattern.compile("([01]\\d|2[0-3]):[0-5]\\d");
     private static final Pattern MODEL_ID = Pattern.compile("[A-Za-z0-9._-]{1,100}");
 
+    static final String DEFAULT_MODEL = "gemini-3.6-flash";
     static final String NOT_CONFIGURED = "AI 추천이 아직 설정되지 않았습니다.";
     private static final String UNAVAILABLE = "AI 추천 서비스에 일시적으로 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
     private static final String REJECTED = "AI 추천 요청이 거절되었습니다.";
@@ -98,7 +99,7 @@ public class GeminiCourseGenerator implements CourseGenerator {
             ObjectMapper mapper
     ) {
         this.apiKey = apiKey == null ? "" : apiKey.strip();
-        this.model = model == null ? "" : model.strip();
+        this.model = model == null || model.isBlank() ? DEFAULT_MODEL : model.strip();
         this.baseUri = URI.create(baseUrl.strip().replaceAll("/+$", ""));
         if (timeoutSeconds < 1 || timeoutSeconds > 120) {
             throw new IllegalArgumentException("Gemini timeout must be between 1 and 120 seconds.");
