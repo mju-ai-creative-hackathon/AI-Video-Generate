@@ -1,5 +1,7 @@
 # Hackathon Backend
 
+숏폼 제작 중계 API 및 AI 연동 가안: [SHORTFORM_API.md](docs/SHORTFORM_API.md)
+
 Java 21, Spring Boot, Gradle, PostgreSQL로 구성된 백엔드 프로젝트입니다.
 
 ## 1. PostgreSQL 실행
@@ -34,7 +36,7 @@ VS Code에서 `BackendApplication.java`의 `Run`을 누르거나 터미널에서
 
 ## 3. 테스트
 
-테스트에서는 Docker와 무관하게 H2 메모리 DB를 사용합니다.
+통합 테스트는 Docker의 PostgreSQL 17 Testcontainers를 사용합니다. Docker Desktop을 실행해야 합니다.
 
 ```powershell
 .\gradlew.bat test

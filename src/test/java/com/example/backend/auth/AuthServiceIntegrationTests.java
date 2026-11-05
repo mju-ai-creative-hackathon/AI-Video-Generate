@@ -1,5 +1,7 @@
 package com.example.backend.auth;
 
+import com.example.backend.PostgresIntegrationTest;
+
 import com.example.backend.auth.domain.User;
 import com.example.backend.auth.domain.RefreshSessionRepository;
 import com.example.backend.auth.domain.UserRepository;
@@ -20,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
-class AuthServiceIntegrationTests {
+class AuthServiceIntegrationTests extends PostgresIntegrationTest {
 
     @Autowired
     private AuthService authService;

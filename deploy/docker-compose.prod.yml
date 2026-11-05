@@ -19,6 +19,12 @@ services:
       FRONTEND_OAUTH_FAILURE_URL: ${FRONTEND_OAUTH_FAILURE_URL}
       SPRING_JPA_SHOW_SQL: "false"
       SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SHORTFORM_STORAGE_ROOT: /app/data/shortforms
+      SHORTFORM_AI_ENABLED: ${SHORTFORM_AI_ENABLED:-false}
+      SHORTFORM_AI_BASE_URL: ${SHORTFORM_AI_BASE_URL:-}
+      SHORTFORM_AI_API_KEY: ${SHORTFORM_AI_API_KEY:-}
+    volumes:
+      - shortform_media:/app/data
 
   db:
     image: postgres:17
@@ -50,3 +56,4 @@ services:
 volumes:
   postgres_data:
   caddy_data:
+  shortform_media:

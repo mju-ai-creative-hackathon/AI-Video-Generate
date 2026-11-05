@@ -1,5 +1,7 @@
 package com.example.backend.place;
 
+import com.example.backend.PostgresIntegrationTest;
+
 import com.example.backend.auth.AuthService;
 import com.example.backend.auth.domain.UserRepository;
 import com.example.backend.auth.domain.RefreshSessionRepository;
@@ -28,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class PlaceApiIntegrationTests {
+class PlaceApiIntegrationTests extends PostgresIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
