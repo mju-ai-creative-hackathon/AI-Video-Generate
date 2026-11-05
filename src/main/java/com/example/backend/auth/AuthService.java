@@ -10,7 +10,6 @@ import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
 import com.example.backend.auth.exception.AuthException;
 import com.example.backend.course.domain.CourseRepository;
-import com.example.backend.course.domain.CourseSource;
 import com.example.backend.course.domain.SavedCourseRepository;
 import com.example.backend.place.domain.BookmarkRepository;
 import com.example.backend.diary.domain.DiaryEntryRepository;
@@ -137,9 +136,9 @@ public class AuthService {
         refreshSessionRepository.deleteByUserId(userId);
         bookmarkRepository.deleteByUserId(userId);
         savedCourseRepository.deleteByUserId(userId);
-        var aiCourses = courseRepository.findBySourceAndOwnerId(CourseSource.AI, userId);
-        aiCourses.forEach(course -> savedCourseRepository.deleteByCourseId(course.getId()));
-        courseRepository.deleteAll(aiCourses);
+        var ownedCourses = courseRepository.findByOwnerId(userId);
+        ownedCourses.forEach(course -> savedCourseRepository.deleteByCourseId(course.getId()));
+        courseRepository.deleteAll(ownedCourses);
         userRepository.delete(user);
     }
 

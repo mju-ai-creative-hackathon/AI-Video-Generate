@@ -34,6 +34,13 @@ public class CommunityController {
         return ResponseEntity.created(URI.create("/api/community/posts/" + post.id())).body(post);
     }
     @GetMapping("/{id}") public PostView get(@PathVariable UUID id) { return service.get(id); }
+    @PostMapping("/{id}/import")
+    public ResponseEntity<ImportResult> importCourse(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable UUID id) {
+        var result = service.importCourse(authorization, id);
+        return ResponseEntity.created(URI.create("/api/diaries/" + result.diary().id())).body(result);
+    }
     @DeleteMapping("/{id}") public ResponseEntity<Void> delete(
             @RequestHeader(value = "Authorization", required = false) String authorization, @PathVariable UUID id) {
         service.delete(authorization, id); return ResponseEntity.noContent().build();
