@@ -234,6 +234,16 @@ public class CourseRecommendationService {
         if (place.isEmpty() && !query.equals(stop.name())) {
             place = placeLookup.findBest(stop.name(), nearLat, nearLng);
         }
+        if (place.isEmpty()) {
+            // "광장시장 박가네빈대떡(본점)" 같은 긴 이름은 괄호·지점명을 떼고 한 번 더 찾는다.
+            String simple = stop.name().replaceAll("\\(.*?\\)", " ").replaceAll("\\s+(본점|[가-힣A-Za-z0-9]+점)$", "").strip();
+            if (!simple.isEmpty() && !simple.equals(stop.name()) && !simple.equals(query)) {
+                place = placeLookup.findBest(simple, nearLat, nearLng);
+            }
+        }
+        if (place.isEmpty()) {
+            log.info("카카오에서 찾지 못해 제외한 장소: name={}, query={}", stop.name(), query);
+        }
         return place
                 .filter(p -> GeoUtils.isInSeoul(new GeoPoint(p.lat(), p.lng())))
                 .map(p -> new ResolvedStop(stop, p, imageLookup.findImageUrl(p.name()).orElse(null)));
