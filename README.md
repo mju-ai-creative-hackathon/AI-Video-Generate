@@ -84,3 +84,15 @@ Authorization: Bearer <accessToken>
 운영 환경에서는 `JWT_SECRET`을 32바이트 이상의 충분히 긴 무작위 값으로 반드시 설정하세요.
 
 데이터까지 삭제할 때만 `docker compose down -v`를 사용합니다.
+
+## 배포 (AWS)
+
+`main`에 push하면 GitHub Actions가 빌드·테스트 → ECR 이미지 push → SSM으로 EC2에 배포한다.
+
+- 주소: `https://3-39-47-78.sslip.io` (EC2 Elastic IP `3.39.47.78`, Caddy가 HTTPS 인증서 자동 발급)
+- 리전 `ap-northeast-2`, EC2 `i-0804f2ce498c85ed3`(t3.small, Amazon Linux 2023), ECR `mju-hackathon-backend`
+- EC2 안에서는 `/opt/app`에서 `docker compose -f docker-compose.prod.yml`로 app + PostgreSQL + Caddy가 돈다.
+- 운영 비밀값은 EC2의 `/opt/app/.env`에 있다(Git에 없음). 수정 후 Actions에서 `CI/CD` 워크플로를 다시 실행하면 반영된다.
+- 접속: `aws ssm start-session --target i-0804f2ce498c85ed3` (SSH 포트는 닫혀 있음)
+- Google 로그인 운영 리디렉션 URI: `https://3-39-47-78.sslip.io/login/oauth2/code/google`
+- GitHub Secrets: `AWS_ROLE_ARN`(OIDC 배포 역할), `EC2_INSTANCE_ID`

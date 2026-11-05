@@ -35,3 +35,8 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// 배포용 bootJar 하나만 생성
+tasks.named('jar') {
+	enabled = false
+}
