@@ -50,8 +50,8 @@ import java.util.concurrent.Future;
 @Service
 public class CourseRecommendationService {
     private static final Logger log = LoggerFactory.getLogger(CourseRecommendationService.class);
-    private static final int MAX_COURSES = 3;
-    private static final int COURSES_PER_REQUEST = 3;
+    private static final int MAX_COURSES = 2;
+    private static final int COURSES_PER_REQUEST = 2;
 
     private final AuthService authService;
     private final CourseGenerator generator;
@@ -243,12 +243,32 @@ public class CourseRecommendationService {
                 place = placeLookup.findBest(simple, nearLat, nearLng);
             }
         }
+        if (place.isPresent() && isExcluded(place.get())) {
+            log.info("제외 카테고리 장소: name={}, category={}", place.get().name(), place.get().categoryName());
+            return Optional.empty();
+        }
         if (place.isEmpty()) {
             log.info("카카오에서 찾지 못해 제외한 장소: name={}, query={}", stop.name(), query);
         }
         return place
                 .filter(p -> GeoUtils.isInSeoul(new GeoPoint(p.lat(), p.lng())))
                 .map(p -> new ResolvedStop(stop, p, imageLookup.findImageUrl(p.name()).orElse(null)));
+    }
+
+    private static final java.util.regex.Pattern PUBLIC_OFFICE = java.util.regex.Pattern.compile(
+            "공공기관|행정기관|주민센터|행정복지센터|구청|시청|경찰|파출소|지구대|소방|우체국|법원|검찰|세무서|등기소|병무청|출입국");
+
+    /** 관공서는 항상 제외, 편의점은 한강·공원 안 편의점만 허용한다. */
+    static boolean isExcluded(KakaoPlace p) {
+        String category = p.categoryName() == null ? "" : p.categoryName();
+        String name = p.name() == null ? "" : p.name();
+        if (PUBLIC_OFFICE.matcher(category).find() || PUBLIC_OFFICE.matcher(name).find()) {
+            return true;
+        }
+        if (category.contains("편의점")) {
+            return !(name.contains("한강") || name.contains("공원"));
+        }
+        return false;
     }
 
     private static Course build(UUID userId, String prompt, AiCourseDraft draft, List<ResolvedStop> stops) {
