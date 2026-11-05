@@ -28,7 +28,7 @@ public class ShortformWorker {
                 var claim = state.claim(jobId);
                 if (claim == null) continue;
                 try {
-                    if (claim.externalJobId() == null) state.submitted(claim, ai.submit(claim.submission()));
+                    if (claim.externalJobId() == null) state.submitted(claim, ai.submit(state.withShootingHints(claim.submission())));
                     else state.result(claim, ai.poll(claim.externalJobId()));
                 } catch (AiRenderException error) { state.failed(claim, error); }
                 // Unknown failures leave the lease intact. A restart or later cycle safely reclaims it.

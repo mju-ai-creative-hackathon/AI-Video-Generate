@@ -9,6 +9,9 @@ import com.example.backend.auth.dto.RefreshTokenRequest;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
 import com.example.backend.auth.exception.AuthException;
+import com.example.backend.course.domain.CourseRepository;
+import com.example.backend.course.domain.CourseSource;
+import com.example.backend.course.domain.SavedCourseRepository;
 import com.example.backend.place.domain.BookmarkRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -28,6 +31,8 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final RefreshSessionRepository refreshSessionRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final SavedCourseRepository savedCourseRepository;
+    private final CourseRepository courseRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(
@@ -35,13 +40,17 @@ public class AuthService {
             JwtTokenProvider jwtTokenProvider,
             RefreshTokenService refreshTokenService,
             RefreshSessionRepository refreshSessionRepository,
-            BookmarkRepository bookmarkRepository
+            BookmarkRepository bookmarkRepository,
+            SavedCourseRepository savedCourseRepository,
+            CourseRepository courseRepository
     ) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
         this.refreshSessionRepository = refreshSessionRepository;
         this.bookmarkRepository = bookmarkRepository;
+        this.savedCourseRepository = savedCourseRepository;
+        this.courseRepository = courseRepository;
     }
 
     @Transactional
@@ -122,6 +131,10 @@ public class AuthService {
 
         refreshSessionRepository.deleteByUserId(userId);
         bookmarkRepository.deleteByUserId(userId);
+        savedCourseRepository.deleteByUserId(userId);
+        var aiCourses = courseRepository.findBySourceAndOwnerId(CourseSource.AI, userId);
+        aiCourses.forEach(course -> savedCourseRepository.deleteByCourseId(course.getId()));
+        courseRepository.deleteAll(aiCourses);
         userRepository.delete(user);
     }
 

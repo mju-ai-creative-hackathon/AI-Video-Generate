@@ -2,7 +2,12 @@ package com.example.backend.shortform;
 
 import com.example.backend.shortform.ai.AiRenderClient;
 import com.example.backend.shortform.ai.AiRenderException;
+import com.example.backend.shortform.ai.ShootingHint;
+import com.example.backend.shortform.ai.ShootingHintProvider;
 import com.example.backend.shortform.storage.MediaStorage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +19,7 @@ import java.util.stream.Collectors;
 /** Short transactions around a durable dispatch queue. No network calls while holding a row lock. */
 @Service
 public class RenderStateService {
+    private static final Logger log = LoggerFactory.getLogger(RenderStateService.class);
     private final RenderJobRepository jobs;
     private final ShortformAssetRepository assets;
     private final MediaStorage storage;
@@ -21,16 +27,25 @@ public class RenderStateService {
     private final long pollDelayMs;
     private final long timeoutSeconds;
     private final int maxFailures;
+    private final ShortformProjectRepository projects;
+    private final ShootingHintProvider hints;
+    public RenderStateService(RenderJobRepository jobs, ShortformAssetRepository assets, MediaStorage storage,
+            long retryDelayMs, long pollDelayMs, long timeoutSeconds, int maxFailures) {
+        this(jobs, assets, storage, retryDelayMs, pollDelayMs, timeoutSeconds, maxFailures, null, null);
+    }
+    @Autowired
     public RenderStateService(RenderJobRepository jobs, ShortformAssetRepository assets, MediaStorage storage,
             @Value("${app.shortform.retry-delay-ms:10000}") long retryDelayMs,
             @Value("${app.shortform.result-poll-delay-ms:5000}") long pollDelayMs,
             @Value("${app.shortform.render-timeout-seconds:1800}") long timeoutSeconds,
-            @Value("${app.shortform.max-failures:3}") int maxFailures) {
+            @Value("${app.shortform.max-failures:3}") int maxFailures,
+            ShortformProjectRepository projects, ShootingHintProvider hints) {
         if (retryDelayMs < 0 || pollDelayMs < 0 || timeoutSeconds < 120 || maxFailures < 1 || maxFailures > 20)
             throw new IllegalArgumentException("Invalid shortform retry/poll/timeout configuration");
         this.jobs = jobs; this.assets = assets; this.storage = storage;
         this.retryDelayMs = retryDelayMs; this.pollDelayMs = pollDelayMs;
         this.timeoutSeconds = timeoutSeconds; this.maxFailures = maxFailures;
+        this.projects = projects; this.hints = hints;
     }
 
     public record Claim(UUID jobId, UUID leaseToken, String externalJobId, AiRenderClient.RenderSubmission submission) {}
@@ -72,6 +87,28 @@ public class RenderStateService {
         if (job.externalJobId == null) job.status = RenderStatus.SUBMITTING;
         return new Claim(job.id, job.leaseToken, job.externalJobId, new AiRenderClient.RenderSubmission(
                 job.id, job.projectId, job.style.name(), job.mood.name(), job.musicId, List.copyOf(sources)));
+    }
+
+    /**
+     * Adds optional course shooting hints. Deliberately outside the claim transaction so a failing
+     * provider can never roll back the lease; lookup failures render without hints.
+     */
+    public AiRenderClient.RenderSubmission withShootingHints(AiRenderClient.RenderSubmission submission) {
+        if (projects == null || hints == null) return submission;
+        List<ShootingHint> resolved;
+        try {
+            var project = projects.findById(submission.projectId()).orElse(null);
+            if (project == null || project.courseId == null) return submission;
+            var result = hints.hintsFor(project.ownerId, project.courseId, project.missionIds());
+            resolved = result == null ? List.of() : result.stream().filter(Objects::nonNull).limit(20).toList();
+        } catch (RuntimeException error) {
+            log.warn("Shooting hints unavailable for shortform project ({}); rendering without hints.",
+                    error.getClass().getSimpleName());
+            return submission;
+        }
+        if (resolved.isEmpty()) return submission;
+        return new AiRenderClient.RenderSubmission(submission.jobId(), submission.projectId(), submission.style(),
+                submission.mood(), submission.musicId(), submission.sources(), resolved);
     }
 
     @Transactional

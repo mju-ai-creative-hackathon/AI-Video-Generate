@@ -42,7 +42,10 @@ public class ShortformService {
 
     @Transactional
     public ProjectView create(String authorization, CreateRequest request) {
-        var project = projects.save(new ShortformProject(owner(authorization), request.title()));
+        var missionIds = request.missionIds() == null ? List.<Long>of() : List.copyOf(new LinkedHashSet<>(request.missionIds()));
+        if (missionIds.size() > 20) throw ApiException.badRequest("촬영 미션은 최대 20개까지 연결할 수 있습니다.");
+        if (request.courseId() == null && !missionIds.isEmpty()) throw ApiException.badRequest("촬영 미션을 연결하려면 코스를 함께 지정해주세요.");
+        var project = projects.save(new ShortformProject(owner(authorization), request.title(), request.courseId(), missionIds));
         return view(project);
     }
 
@@ -131,7 +134,8 @@ public class ShortformService {
     private ProjectView view(ShortformProject project) {
         return new ProjectView(project.id, project.title,
                 assets.findByProjectIdOrderByPositionAsc(project.id).stream().map(AssetView::from).toList(),
-                jobs.findFirstByProjectIdOrderByCreatedAtDescIdDesc(project.id).map(RenderView::from).orElse(null), project.createdAt);
+                jobs.findFirstByProjectIdOrderByCreatedAtDescIdDesc(project.id).map(RenderView::from).orElse(null), project.createdAt,
+                project.courseId, project.missionIds());
     }
     private void requireEditable(UUID id) {
         if (jobs.existsByProjectId(id)) throw conflict("제작을 요청한 프로젝트의 원본은 변경할 수 없습니다. 새 프로젝트를 만들어주세요.");

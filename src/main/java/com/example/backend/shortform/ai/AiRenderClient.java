@@ -14,9 +14,15 @@ public interface AiRenderClient {
     RenderResult poll(String externalJobId);
 
     record RenderSubmission(UUID jobId, UUID projectId, String style, String mood, String musicId,
-                            List<Source> sources) {
+                            List<Source> sources, List<ShootingHint> shootingHints) {
         public RenderSubmission {
             sources = List.copyOf(sources);
+            shootingHints = shootingHints == null ? List.of() : List.copyOf(shootingHints);
+        }
+
+        public RenderSubmission(UUID jobId, UUID projectId, String style, String mood, String musicId,
+                                List<Source> sources) {
+            this(jobId, projectId, style, mood, musicId, sources, List.of());
         }
     }
 

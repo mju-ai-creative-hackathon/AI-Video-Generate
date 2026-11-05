@@ -39,3 +39,6 @@ out/
 ### Local environment ###
 .env
 data/
+
+### Claude Code worktrees ###
+.claude/worktrees/

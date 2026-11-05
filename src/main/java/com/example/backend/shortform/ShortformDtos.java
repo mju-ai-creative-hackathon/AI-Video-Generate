@@ -7,7 +7,10 @@ import java.util.*;
 
 public final class ShortformDtos {
     private ShortformDtos() {}
-    public record CreateRequest(@NotBlank @Size(max = 100) String title) {}
+    public record CreateRequest(@NotBlank @Size(max = 100) String title, @Positive Long courseId,
+                                @Size(max = 20) List<@NotNull @Positive Long> missionIds) {
+        public CreateRequest(String title) { this(title, null, null); }
+    }
     public record RenderRequest(@NotNull VideoStyle style, @NotNull VideoMood mood,
                                 @Pattern(regexp = "[A-Za-z0-9_-]{1,100}") String musicId,
                                 @NotNull @Size(min = 5, max = 20) List<@NotNull UUID> assetIds) {}
@@ -29,6 +32,7 @@ public final class ShortformDtos {
                     job.videoUrl, job.thumbnailUrl, job.errorCode, job.errorMessage, job.createdAt, job.updatedAt);
         }
     }
-    public record ProjectView(UUID id, String title, List<AssetView> assets, RenderView latestRender, Instant createdAt) {}
+    public record ProjectView(UUID id, String title, List<AssetView> assets, RenderView latestRender, Instant createdAt,
+                              Long courseId, List<Long> missionIds) {}
     public record ProjectPage(List<ProjectView> items, int page, int size, long totalElements, int totalPages, boolean hasNext) {}
 }

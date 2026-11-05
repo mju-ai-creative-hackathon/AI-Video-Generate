@@ -42,7 +42,18 @@ Content-Type: application/json
 ```
 
 생성 응답의 `id`가 이후 사용하는 `projectId`입니다. 프로젝트 상세에는 `assets`, `latestRender`,
-`createdAt`을 포함합니다.
+`createdAt`, `courseId`, `missionIds`를 포함합니다.
+
+여행 코스의 촬영 미션으로 만드는 숏폼이면 선택적으로 코스와 미션을 연결합니다.
+
+```json
+{"title":"서울숲 코스 브이로그","courseId":12,"missionIds":[101,102,103]}
+```
+
+- `courseId`, `missionIds`는 모두 선택입니다. `title`만 보내는 기존 요청은 그대로 동작합니다.
+- `missionIds`는 최대 20개, 중복은 첫 순서만 남깁니다. `missionIds`만 보내고 `courseId`가 없으면 400입니다.
+- 연결하지 않은 프로젝트의 응답은 `courseId: null`, `missionIds: []`입니다.
+- 연결 정보는 생성 후 변경할 수 없습니다. 제작 시 AI 요청의 `shootingHints`로 활용합니다.
 
 ### 소스 업로드
 
@@ -155,6 +166,20 @@ multipart 필드:
   ]
 }
 ```
+
+`shootingHints`는 선택 필드입니다. 코스와 연결된 프로젝트에서 촬영 미션 정보를 찾은 경우에만 포함하며,
+없으면 필드 자체를 보내지 않습니다. AI 서버는 이 필드가 없어도 기존과 동일하게 처리해야 합니다.
+
+```json
+"shootingHints":[
+  {"missionId":101,"placeName":"서울숲","kind":"VIDEO","title":"입구에서 걸어 들어가기","guide":"정면에서 천천히 걸으며 촬영","durationSec":5},
+  {"missionId":102,"placeName":"서울숲","kind":"PHOTO","title":"사슴 방사장","guide":"가로 구도","durationSec":null}
+]
+```
+
+- `kind`: `PHOTO` 또는 `VIDEO`. `durationSec`은 영상 미션의 권장 길이(초)이며 없을 수 있습니다.
+- 최대 20개, 프로젝트 생성 시 지정한 미션 순서입니다. 힌트 조회에 실패하면 힌트 없이 제작을 진행합니다.
+- 현재 `sources[].missionId`(업로드 시 UUID)와 `shootingHints[].missionId`(코스 미션 숫자 ID)는 별개 값입니다.
 
 AI 서버는 `Idempotency-Key`를 기준으로 중복 제출을 같은 작업으로 처리해야 합니다.
 백엔드가 재시작되거나 제출 응답 저장에 실패하면 같은 키로 재제출할 수 있습니다.

@@ -239,6 +239,22 @@ Authorization: Bearer <accessToken>
 | 토큰 없음/잘못된 토큰 | 401 | `UNAUTHORIZED` |
 | 장소 없음 | 404 | `NOT_FOUND` |
 
+## 코스(탐색하기) API
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/courses/regions` | 지역 칩(성수·종로·홍대·여의도 등) |
+| GET | `/api/courses?region=&lat=&lng=&page=&size=` | 기본 추천 코스 목록. `distanceMeters`=내 위치→첫 장소 |
+| GET | `/api/courses/{id}?lat=&lng=` | 코스 상세: `stops`, `legs`(구간 거리·시간·`naverMapUrl`·`googleMapsUrl`), `startLeg`(현재 위치→1번), `missions` |
+| POST | `/api/courses/recommendations` | `{prompt, lat?, lng?}` → AI 맞춤 코스 최대 3개(상세 형식). 로그인 필요, 10~30초 소요, 하루 20회 |
+| PUT/DELETE | `/api/courses/{id}/save` | 코스 저장/해제 (로그인) |
+| GET | `/api/courses/saved` | 저장한 코스 (로그인) |
+
+- 길찾기: `naverMapUrl`(`nmap://route/walk|public?...&appname=com.mju.hackathon.moment`)을 열고, 네이버지도 미설치 시 `googleMapsUrl`로 대체. iOS `Info.plist` `LSApplicationQueriesSchemes`에 `nmap` 추가 필요.
+- 1.5km 이하 구간은 도보(`WALK`), 초과는 대중교통(`PUBLIC`). 거리·시간은 직선거리 기반 추정치.
+- AI 코스는 만든 사람에게만 보인다. 숏폼 프로젝트 생성 시 `courseId`, `missionIds`를 넘기면 촬영 미션이 AI 편집 힌트로 전달된다.
+- 오류: 503 `AI_UNAVAILABLE`, 502 `AI_NO_RESULT`(검증된 장소 부족), 429 `RATE_LIMITED`.
+
 ## 배포 (AWS)
 
 `main`에 push하면 GitHub Actions가 빌드·테스트 → ECR 이미지 push → SSM으로 EC2에 배포한다.

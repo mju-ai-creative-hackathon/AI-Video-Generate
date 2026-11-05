@@ -1,0 +1,589 @@
+[
+  {
+    "title": "참 좋은 날 고궁 나들이",
+    "summary": "광화문에서 경복궁, 국립고궁박물관을 지나 북촌 한옥 골목까지 걷는 3시간 고궁 코스",
+    "region": "종로",
+    "totalMinutes": 190,
+    "estimatedCost": 12000,
+    "displayOrder": 1,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "광화문",
+        "description": "경복궁의 정문으로 1395년 처음 세워졌고, 2023년 복원된 월대(月臺)와 함께 옛 모습을 되찾았습니다. 수문장 교대식은 화요일을 뺀 매일 10시와 14시에 열리니 시간을 맞춰 가면 좋습니다.",
+        "address": "서울 종로구 사직로 161",
+        "lat": 37.575926,
+        "lng": 126.976816,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Gwanghwamun_20240413.jpg/960px-Gwanghwamun_20240413.jpg",
+        "startTime": "13:30",
+        "stayMinutes": 15
+      },
+      {
+        "seq": 2,
+        "name": "경복궁",
+        "description": "조선 왕조의 법궁으로 근정전, 경회루, 향원정이 대표 볼거리입니다. 화요일은 휴궁이고 성인 입장료는 3,000원이며, 한복을 입으면 무료로 입장할 수 있습니다.",
+        "address": "서울 종로구 사직로 161",
+        "lat": 37.578611,
+        "lng": 126.977222,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/%EA%B4%91%ED%99%94%EB%AC%B8_%EC%9B%94%EB%8C%80.jpg/960px-%EA%B4%91%ED%99%94%EB%AC%B8_%EC%9B%94%EB%8C%80.jpg",
+        "startTime": "13:50",
+        "stayMinutes": 70
+      },
+      {
+        "seq": 3,
+        "name": "국립고궁박물관",
+        "description": "경복궁 서쪽에 있는 박물관으로 조선 왕실의 어보, 어진, 과학기구 등 유물을 무료로 볼 수 있습니다. 궁을 둘러본 뒤 실내에서 쉬어 가기 좋습니다.",
+        "address": "서울 종로구 효자로 12",
+        "lat": 37.576567,
+        "lng": 126.974969,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/National_Palace_Museum_of_Korea_20240409_004.jpg/960px-National_Palace_Museum_of_Korea_20240409_004.jpg",
+        "startTime": "15:05",
+        "stayMinutes": 35
+      },
+      {
+        "seq": 4,
+        "name": "북촌한옥마을",
+        "description": "경복궁과 창덕궁 사이에 한옥 900여 채가 모여 있는 주거 마을입니다. 북촌로11길 일대는 주민 보호를 위해 17시부터 다음 날 10시까지 관광객 통행이 제한되니 오후 일찍 둘러보고, 대화는 조용히 나누세요.",
+        "address": "서울 종로구 북촌로11길 일대",
+        "lat": 37.582392,
+        "lng": 126.985865,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Bukchon_Hanok_Village_%EB%B6%81%EC%B4%8C_%ED%95%9C%EC%98%A5%EB%A7%88%EC%9D%84_October_1_2020_15.jpg/960px-Bukchon_Hanok_Village_%EB%B6%81%EC%B4%8C_%ED%95%9C%EC%98%A5%EB%A7%88%EC%9D%84_October_1_2020_15.jpg",
+        "startTime": "16:05",
+        "stayMinutes": 35
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 1,
+        "kind": "VIDEO",
+        "title": "광화문 정면 대칭 워킹샷",
+        "guide": "월대 중앙 계단 아래에서 광화문을 정면에 두고 화면 정중앙에 문이 오도록 맞춥니다. 카메라는 가슴 높이로 들고 문을 향해 천천히 걸어가며 흔들림 없이 촬영하세요. 오후 2시 수문장 교대식 직후에 찍으면 인파가 빠져 대칭이 깔끔합니다.",
+        "durationSec": 5
+      },
+      {
+        "stopSeq": 2,
+        "kind": "PHOTO",
+        "title": "경회루 연못 반영샷",
+        "guide": "경회루 동쪽 연못가에 서서 누각과 물에 비친 반영이 위아래로 대칭이 되게 가로로 찍습니다. 카메라를 수면에 최대한 가깝게 낮추면 반영이 크게 담깁니다. 바람이 잦아드는 순간을 기다리세요.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 4,
+        "kind": "VIDEO",
+        "title": "북촌 골목 기와지붕 패닝",
+        "guide": "북촌로11길 언덕 위에서 기와지붕이 겹쳐 내려가는 골목을 내려다봅니다. 왼쪽에서 오른쪽으로 아주 천천히 패닝해 지붕 너머 도심 빌딩까지 담으세요. 주민이 사는 곳이라 대문과 창문은 정면으로 찍지 않습니다.",
+        "durationSec": 6
+      }
+    ]
+  },
+  {
+    "title": "광장시장 먹고 걷는 하루",
+    "summary": "종묘와 세운상가를 거쳐 광장시장에서 배를 채우고 청계천을 따라 걷는 5시간 탐방 코스",
+    "region": "종로",
+    "totalMinutes": 300,
+    "estimatedCost": 30000,
+    "displayOrder": 2,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "종묘",
+        "description": "조선 역대 왕과 왕비의 신주를 모신 사당으로 유네스코 세계유산입니다. 정면 길이 100m가 넘는 정전이 압권이며, 평일에는 시간제 해설 관람, 토요일과 매달 마지막 수요일에는 자유관람으로 운영됩니다(화요일 휴관, 입장료 1,000원).",
+        "address": "서울 종로구 종로 157",
+        "lat": 37.574444,
+        "lng": 126.994167,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Jeongjeon%2C_Jongmyo_%28Summer%2C_2013%29.jpg/960px-Jeongjeon%2C_Jongmyo_%28Summer%2C_2013%29.jpg",
+        "startTime": "10:00",
+        "stayMinutes": 70
+      },
+      {
+        "seq": 2,
+        "name": "세운상가",
+        "description": "1968년 지어진 국내 최초의 주상복합 상가로, 전자상가와 제작 공방이 지금도 모여 있습니다. 옥상 전망대(세운옥상)에 오르면 종묘 숲과 남산이 한눈에 들어옵니다.",
+        "address": "서울 종로구 청계천로 159",
+        "lat": 37.568733,
+        "lng": 126.995154,
+        "imageUrl": "https://t1.daumcdn.net/news/202409/02/mk/20240902071201942afwn.jpg",
+        "startTime": "11:25",
+        "stayMinutes": 40
+      },
+      {
+        "seq": 3,
+        "name": "광장시장",
+        "description": "1905년 문을 연 국내 최초의 상설시장입니다. 녹두빈대떡, 마약김밥, 육회가 대표 메뉴이고 먹자골목 좌판에 앉아 여러 가지를 조금씩 나눠 먹는 것이 요령입니다. 2층 구제상가도 함께 둘러보세요.",
+        "address": "서울 종로구 창경궁로 88",
+        "lat": 37.569485,
+        "lng": 126.997856,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Gwangjangmarket_mainentrance.jpg/960px-Gwangjangmarket_mainentrance.jpg",
+        "startTime": "12:15",
+        "stayMinutes": 100
+      },
+      {
+        "seq": 4,
+        "name": "청계천 버들다리(전태일다리)",
+        "description": "광장시장 남쪽 청계천을 따라 동쪽으로 걸으면 전태일 동상이 서 있는 버들다리에 닿습니다. 물가 산책로로 내려가 징검다리를 건너며 배를 꺼뜨리기 좋습니다.",
+        "address": "서울 종로구 종로6가 청계천 버들다리",
+        "lat": 37.56966,
+        "lng": 127.006688,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Seoul_Cheonggyecheon_night.jpg/960px-Seoul_Cheonggyecheon_night.jpg",
+        "startTime": "14:05",
+        "stayMinutes": 55
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 2,
+        "kind": "PHOTO",
+        "title": "세운옥상에서 본 종묘 숲",
+        "guide": "세운상가 옥상 전망대 북쪽 난간에 서서 종묘의 숲과 그 뒤 북악산을 프레임에 담습니다. 난간이 화면 아래쪽에 살짝 걸리게 두면 높이감이 살아납니다. 맑은 오전이 가장 선명합니다.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 3,
+        "kind": "VIDEO",
+        "title": "빈대떡 부치는 소리 클로즈업",
+        "guide": "빈대떡 가게 철판 앞에서 사장님께 촬영 양해를 구한 뒤, 카메라를 철판 높이로 낮춰 기름에 지글거리는 빈대떡을 가까이 찍습니다. 뒤집는 순간을 노려 고정 샷으로 담고, 현장음을 살리세요.",
+        "durationSec": 5
+      },
+      {
+        "stopSeq": 4,
+        "kind": "VIDEO",
+        "title": "청계천 물길 로우앵글 워킹",
+        "guide": "청계천 산책로로 내려가 카메라를 무릎 높이로 들고 물길과 나란히 천천히 걸으며 촬영합니다. 수면이 화면 아래 1/3을 채우게 하면 시원한 느낌이 납니다. 해가 기울기 시작하는 오후에 물빛이 반짝입니다.",
+        "durationSec": 6
+      }
+    ]
+  },
+  {
+    "title": "성수, 오늘의 취향 찾기",
+    "summary": "서울숲 산책 뒤 언더스탠드에비뉴와 연무장길 편집숍, 대림창고 카페까지 이어지는 성수 코스",
+    "region": "성수",
+    "totalMinutes": 245,
+    "estimatedCost": 25000,
+    "displayOrder": 3,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "서울숲",
+        "description": "옛 뚝섬 경마장과 골프장 자리에 만든 대형 도시숲입니다. 은행나무길, 꽃사슴 방사장, 거울연못이 인기 산책 포인트이고 입장은 무료입니다.",
+        "address": "서울 성동구 뚝섬로 273",
+        "lat": 37.544625,
+        "lng": 127.039844,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Seoul_Forest_%EC%84%9C%EC%9A%B8%EC%88%B2.jpg/960px-Seoul_Forest_%EC%84%9C%EC%9A%B8%EC%88%B2.jpg",
+        "startTime": "13:00",
+        "stayMinutes": 60
+      },
+      {
+        "seq": 2,
+        "name": "언더스탠드에비뉴",
+        "description": "서울숲역 앞에 컨테이너를 쌓아 만든 문화 공간으로 소품숍, 전시, 팝업이 수시로 바뀝니다. 서울숲과 바로 붙어 있어 쉬어 가기 좋습니다.",
+        "address": "서울 성동구 왕십리로 63",
+        "lat": 37.542926,
+        "lng": 127.044631,
+        "imageUrl": "https://csearch-phinf.pstatic.net/20250428_92/1745819716541Cico9_PNG/360_main_thumb_url_1745819716399.png",
+        "startTime": "14:05",
+        "stayMinutes": 30
+      },
+      {
+        "seq": 3,
+        "name": "성수 연무장길",
+        "description": "수제화 공장과 창고 사이로 편집숍, 브랜드 팝업스토어, 카페가 줄지어 들어선 성수의 메인 거리입니다. 주말엔 팝업 대기 줄이 길어 평일 오후가 한결 여유롭습니다.",
+        "address": "서울 성동구 연무장길 일대",
+        "lat": 37.543041,
+        "lng": 127.053759,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Cafe_storefront_in_Seongsu-dong.jpg/960px-Cafe_storefront_in_Seongsu-dong.jpg",
+        "startTime": "14:50",
+        "stayMinutes": 80
+      },
+      {
+        "seq": 4,
+        "name": "대림창고",
+        "description": "1970년대 정미소와 창고로 쓰던 붉은 벽돌 건물을 그대로 살린 갤러리 카페로, 성수 창고 카페 붐을 연 곳입니다. 높은 층고와 녹슨 철골 아래에서 커피를 마시며 하루를 마무리하세요.",
+        "address": "서울 성동구 성수이로 78",
+        "lat": 37.541825,
+        "lng": 127.056459,
+        "imageUrl": "https://postfiles.pstatic.net/MjAyNjEwMjBfMjU2/MDAxNzkyNDg3NDIwNDYw.QaVYDJ9TCINql2Zg-kDBEBjVmDToUJj-B541FwBG9LQg.UQ3VJqRxkGIfsGAKZJ4VKhTSUiqjD2daz-_KFEGYmxgg.JPEG/Jy7pB-hTTI-iruymJ-oh3-loijp4p8LCutYkfAI0g6sGCtv0Bg1PhWeBzJhd8GmHNsNvL2SiDKov.jpg?type=w966",
+        "startTime": "16:15",
+        "stayMinutes": 50
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 1,
+        "kind": "PHOTO",
+        "title": "서울숲 숲길 뒷모습 샷",
+        "guide": "서울숲 은행나무길 한가운데에 인물을 세우고 3~4m 뒤에서 길이 소실점으로 모이도록 찍습니다. 카메라는 허리 높이로 살짝 낮추면 나무가 더 높아 보입니다. 오후 햇살이 나뭇잎 사이로 비칠 때가 좋습니다.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 3,
+        "kind": "VIDEO",
+        "title": "편집숍 쇼윈도 슬라이드샷",
+        "guide": "연무장길 편집숍 쇼윈도와 나란히 서서 카메라를 가슴 높이에 고정하고 옆으로 천천히 걸으며 진열대를 훑습니다. 유리 반사를 줄이려면 렌즈를 유리에 비스듬히 대고, 매장 내부는 직원에게 먼저 촬영 가능 여부를 물어보세요.",
+        "durationSec": 6
+      },
+      {
+        "stopSeq": 4,
+        "kind": "PHOTO",
+        "title": "대림창고 높은 천장 로우앵글",
+        "guide": "대림창고 실내 중앙에서 카메라를 바닥 가까이 내리고 위로 향해 철골 지붕과 붉은 벽돌 벽이 함께 담기게 찍습니다. 인물은 화면 아래쪽에 작게 두면 공간의 규모가 강조됩니다.",
+        "durationSec": null
+      }
+    ]
+  },
+  {
+    "title": "홍대에서 연남까지, 청춘 산책",
+    "summary": "상상마당과 걷고싶은거리 버스킹을 지나 연트럴파크 잔디밭에서 노을을 보는 홍대·연남 코스",
+    "region": "홍대",
+    "totalMinutes": 195,
+    "estimatedCost": 20000,
+    "displayOrder": 4,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "KT&G 상상마당 홍대",
+        "description": "독특한 외관으로 유명한 홍대 대표 복합문화공간입니다. 갤러리, 디자인 소품숍, 라이브홀, 독립영화관이 한 건물에 있어 홍대 문화를 압축해서 볼 수 있습니다.",
+        "address": "서울 마포구 어울마당로 65",
+        "lat": 37.550989,
+        "lng": 126.921068,
+        "imageUrl": "https://image.cine21.com/resize/cine21/article/2022/0124/15_56_44__61ee4daca3c70%5BW680-%5D.jpg",
+        "startTime": "15:00",
+        "stayMinutes": 40
+      },
+      {
+        "seq": 2,
+        "name": "홍대 걷고싶은거리",
+        "description": "옛 당인리선 철길 자리를 따라 난 어울마당로 일대로, 주말 오후면 버스킹 공연과 댄스팀이 거리를 채웁니다. 길 양옆 옷가게와 길거리 음식도 함께 즐기세요.",
+        "address": "서울 마포구 어울마당로 일대",
+        "lat": 37.554526,
+        "lng": 126.922766,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Hongdae_Street_01.jpg/960px-Hongdae_Street_01.jpg",
+        "startTime": "15:50",
+        "stayMinutes": 60
+      },
+      {
+        "seq": 3,
+        "name": "경의선숲길 연트럴파크",
+        "description": "폐선된 경의선 철길을 공원으로 바꾼 경의선숲길의 연남동 구간으로, 뉴욕 센트럴파크에 빗대 연트럴파크라 불립니다. 잔디밭에 앉아 쉬다가 양옆 연남동 골목 카페와 식당으로 들어가기 좋습니다.",
+        "address": "서울 마포구 연남동 경의선숲길",
+        "lat": 37.562166,
+        "lng": 126.922649,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Gyeonguiseon_Forest_Trail_Park_and_Ttaeng-ttaeng_Street_in_Seoul_%28near_Hongdae%2C_1%29.jpg/960px-Gyeonguiseon_Forest_Trail_Park_and_Ttaeng-ttaeng_Street_in_Seoul_%28near_Hongdae%2C_1%29.jpg",
+        "startTime": "17:05",
+        "stayMinutes": 70
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 2,
+        "kind": "VIDEO",
+        "title": "버스킹 군중 너머 줌인",
+        "guide": "버스킹 무대에서 10m쯤 떨어진 곳에서 관객 머리 너머로 공연자를 잡고 천천히 다가가며 촬영합니다. 카메라를 머리 위로 들어 관객 실루엣이 화면 아래에 걸리면 현장감이 삽니다. 공연자 얼굴을 가까이 담을 때는 먼저 양해를 구하세요.",
+        "durationSec": 8
+      },
+      {
+        "stopSeq": 3,
+        "kind": "PHOTO",
+        "title": "연트럴파크 노을 잔디샷",
+        "guide": "해 지기 30분 전 연트럴파크 잔디밭에 앉아 철길 방향으로 길게 뻗은 산책로를 배경에 둡니다. 역광으로 인물 실루엣을 잡고, 노출은 하늘에 맞추면 노을색이 진하게 나옵니다.",
+        "durationSec": null
+      }
+    ]
+  },
+  {
+    "title": "서울의 빛을 따라 걷는 하루",
+    "summary": "여의도공원에서 더현대 서울을 거쳐 여의도한강공원에서 노을을 맞는 여의도 코스",
+    "region": "여의도",
+    "totalMinutes": 210,
+    "estimatedCost": 30000,
+    "displayOrder": 5,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "여의도공원",
+        "description": "옛 여의도 광장을 공원으로 바꾼 곳으로 넓은 잔디마당, 한국 전통의 숲, 자전거 길이 이어집니다. 도심 빌딩 숲 한가운데서 가볍게 산책하며 하루를 시작하세요.",
+        "address": "서울 영등포구 여의공원로 68",
+        "lat": 37.525536,
+        "lng": 126.921586,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/%ED%95%9C%EA%B0%95%EC%97%AC%EC%9D%98%EB%8F%84%EA%B3%B5%EC%9B%90_%EA%B4%91%EC%9E%A5_2025.jpg/960px-%ED%95%9C%EA%B0%95%EC%97%AC%EC%9D%98%EB%8F%84%EA%B3%B5%EC%9B%90_%EA%B4%91%EC%9E%A5_2025.jpg",
+        "startTime": "15:30",
+        "stayMinutes": 40
+      },
+      {
+        "seq": 2,
+        "name": "더현대 서울",
+        "description": "2021년 문을 연 서울 최대 규모 백화점으로, 5층 실내 정원 사운즈 포레스트와 천장에서 쏟아지는 자연광이 볼거리입니다. 지하 식품관에서 한강에 가져갈 간식을 챙기세요.",
+        "address": "서울 영등포구 여의대로 108",
+        "lat": 37.525964,
+        "lng": 126.928418,
+        "imageUrl": "https://t1.daumcdn.net/news/202411/01/mydaily/20241101210252055sgtd.jpg",
+        "startTime": "16:15",
+        "stayMinutes": 70
+      },
+      {
+        "seq": 3,
+        "name": "여의도한강공원",
+        "description": "마포대교와 원효대교 사이 한강 변 공원으로 서울에서 노을이 가장 아름다운 곳 중 하나입니다. 해 지기 30분 전에 도착해 강가 계단에 자리를 잡고, 해가 진 뒤 다리 조명이 켜질 때까지 머물러 보세요.",
+        "address": "서울 영등포구 여의동로 330",
+        "lat": 37.525673,
+        "lng": 126.936059,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Yeouido_Hangang_Park_from_Mapo_Bridge_1.jpg/960px-Yeouido_Hangang_Park_from_Mapo_Bridge_1.jpg",
+        "startTime": "17:40",
+        "stayMinutes": 80
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 2,
+        "kind": "PHOTO",
+        "title": "사운즈 포레스트 실내 정원샷",
+        "guide": "더현대 서울 5층 사운즈 포레스트 가장자리에서 천장 유리창과 나무가 함께 들어오도록 세로로 찍습니다. 인물을 나무 사이 벤치에 앉히고 위쪽 여백을 넉넉히 두면 공간감이 살아납니다.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 3,
+        "kind": "VIDEO",
+        "title": "한강 노을 고정샷",
+        "guide": "강가 계단에 카메라를 고정하고 수평선을 화면 아래 1/3에 맞춰 마포대교 쪽 노을을 찍습니다. 움직이지 않고 10초 동안 그대로 두면 하늘색 변화와 물결이 자연스럽게 담깁니다.",
+        "durationSec": 10
+      },
+      {
+        "stopSeq": 3,
+        "kind": "PHOTO",
+        "title": "마포대교 실루엣샷",
+        "guide": "해가 진 직후 강변 산책로에서 마포대교를 배경으로 인물 실루엣을 찍습니다. 노출을 하늘에 맞춰 인물은 검게 떨어뜨리고, 다리 조명이 막 켜지는 순간을 노리세요.",
+        "durationSec": null
+      }
+    ]
+  },
+  {
+    "title": "남산 위에 뜬 서울의 밤",
+    "summary": "명동 거리와 명동대성당을 지나 케이블카를 타고 N서울타워에서 야경을 보는 코스",
+    "region": "중구",
+    "totalMinutes": 210,
+    "estimatedCost": 45000,
+    "displayOrder": 6,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "명동거리(명동예술극장)",
+        "description": "1936년 지어진 옛 명치좌 건물을 복원한 명동예술극장을 기준으로 명동 쇼핑 거리가 펼쳐집니다. 해 질 무렵부터 길거리 음식 노점이 줄지어 서니 간단히 맛보며 걸어 보세요.",
+        "address": "서울 중구 명동길 35",
+        "lat": 37.563977,
+        "lng": 126.984142,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/National_Theater_Company_of_Korea%2C_MyeongDong_Theater.jpg/960px-National_Theater_Company_of_Korea%2C_MyeongDong_Theater.jpg",
+        "startTime": "17:00",
+        "stayMinutes": 40
+      },
+      {
+        "seq": 2,
+        "name": "명동대성당",
+        "description": "1898년 완공된 한국 최초의 벽돌조 고딕 성당이자 사적입니다. 미사가 열리는 성당이므로 내부에서는 조용히 머물고, 저녁 조명이 켜진 외관이 특히 아름답습니다.",
+        "address": "서울 중구 명동길 74",
+        "lat": 37.563159,
+        "lng": 126.987156,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Myeongdongchurch2025.jpg/960px-Myeongdongchurch2025.jpg",
+        "startTime": "17:45",
+        "stayMinutes": 30
+      },
+      {
+        "seq": 3,
+        "name": "남산케이블카",
+        "description": "1962년 운행을 시작한 국내 첫 여객 케이블카로, 몇 분 만에 남산 정상 부근까지 오릅니다. 명동역에서 탑승장까지 오르막이 이어지니 편한 신발을 신으세요.",
+        "address": "서울 중구 소파로 83",
+        "lat": 37.556686,
+        "lng": 126.984119,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/%EB%82%A8%EC%82%B0_%EC%BC%80%EC%9D%B4%EB%B8%94%EC%B9%B4.JPG/960px-%EB%82%A8%EC%82%B0_%EC%BC%80%EC%9D%B4%EB%B8%94%EC%B9%B4.JPG",
+        "startTime": "18:30",
+        "stayMinutes": 30
+      },
+      {
+        "seq": 4,
+        "name": "N서울타워",
+        "description": "남산 정상에 선 서울의 상징으로 전망대에서 서울 전역의 야경을 360도로 볼 수 있습니다. 타워 아래 팔각정과 사랑의 자물쇠 울타리는 무료로 둘러볼 수 있습니다.",
+        "address": "서울 용산구 남산공원길 105",
+        "lat": 37.55127,
+        "lng": 126.988281,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Seoul_Tower_%284394893276%29.jpg/960px-Seoul_Tower_%284394893276%29.jpg",
+        "startTime": "19:10",
+        "stayMinutes": 80
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 2,
+        "kind": "PHOTO",
+        "title": "명동대성당 첨탑 로우앵글",
+        "guide": "성당 앞마당 계단 아래에서 카메라를 낮게 들고 위로 향해 첨탑 끝까지 프레임에 담습니다. 조명이 켜진 직후 하늘이 아직 푸를 때(블루아워) 찍으면 벽돌색이 또렷합니다.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 3,
+        "kind": "VIDEO",
+        "title": "케이블카 창밖 상승샷",
+        "guide": "케이블카 아래쪽 창가 자리를 잡고 렌즈를 유리에 바짝 대 반사를 막습니다. 출발과 함께 명동 빌딩 숲이 멀어지는 장면을 고정 자세로 담으세요.",
+        "durationSec": 8
+      },
+      {
+        "stopSeq": 4,
+        "kind": "PHOTO",
+        "title": "사랑의 자물쇠와 야경",
+        "guide": "타워 아래 자물쇠 울타리 앞에서 자물쇠를 화면 앞쪽에 크게 걸고, 뒤로 펼쳐진 도심 야경은 흐리게 날려 찍습니다. 인물 모드나 근접 초점을 쓰면 보케가 예쁘게 나옵니다.",
+        "durationSec": null
+      }
+    ]
+  },
+  {
+    "title": "익선동 레트로 타임슬립",
+    "summary": "탑골공원과 인사동 쌈지길, 운현궁을 거쳐 익선동 한옥 골목에서 마무리하는 레트로 코스",
+    "region": "종로",
+    "totalMinutes": 235,
+    "estimatedCost": 25000,
+    "displayOrder": 7,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "탑골공원",
+        "description": "1919년 3·1 운동 때 독립선언서가 낭독된 서울 최초의 근대 공원입니다. 국보 원각사지 십층석탑을 유리 보호각 너머로 볼 수 있습니다.",
+        "address": "서울 종로구 종로 99",
+        "lat": 37.571156,
+        "lng": 126.988641,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Tapgol_park_main.jpg/960px-Tapgol_park_main.jpg",
+        "startTime": "13:00",
+        "stayMinutes": 25
+      },
+      {
+        "seq": 2,
+        "name": "인사동 쌈지길",
+        "description": "가운데 마당을 둘러싼 나선형 오르막길을 따라 공예품과 소품 가게 70여 곳이 이어지는 인사동의 명소입니다. 꼭대기 옥상까지 걸어 올라가며 구경하는 구조라 계단 없이 둘러볼 수 있습니다.",
+        "address": "서울 종로구 인사동길 44",
+        "lat": 37.574256,
+        "lng": 126.98482,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Seoul-Insadong-Ssamzie_Market-01.jpg/960px-Seoul-Insadong-Ssamzie_Market-01.jpg",
+        "startTime": "13:35",
+        "stayMinutes": 50
+      },
+      {
+        "seq": 3,
+        "name": "운현궁",
+        "description": "흥선대원군이 살았고 고종이 왕위에 오르기 전까지 자란 집입니다. 노안당, 노락당 등 한옥 건물이 잘 남아 있고 무료로 관람할 수 있습니다(월요일 휴관).",
+        "address": "서울 종로구 삼일대로 464",
+        "lat": 37.576208,
+        "lng": 126.987092,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/%EC%84%9C%EC%9A%B8_%EC%9A%B4%ED%98%84%EA%B6%81_%EC%A0%84%EA%B2%BD.jpg/960px-%EC%84%9C%EC%9A%B8_%EC%9A%B4%ED%98%84%EA%B6%81_%EC%A0%84%EA%B2%BD.jpg",
+        "startTime": "14:35",
+        "stayMinutes": 40
+      },
+      {
+        "seq": 4,
+        "name": "익선동 한옥거리",
+        "description": "1920년대에 지어진 도시형 한옥 골목에 카페, 식당, 소품숍이 들어선 레트로 거리입니다. 좁은 골목이 미로처럼 이어지니 지도 없이 걸으며 발견하는 재미를 즐기세요.",
+        "address": "서울 종로구 익선동 일대",
+        "lat": 37.573502,
+        "lng": 126.989847,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/View_of_Ikseon-dong_from_National_Tax_Service_Jongno_District_Office.jpg/960px-View_of_Ikseon-dong_from_National_Tax_Service_Jongno_District_Office.jpg",
+        "startTime": "15:25",
+        "stayMinutes": 90
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 2,
+        "kind": "VIDEO",
+        "title": "쌈지길 나선 오르막 팔로우샷",
+        "guide": "쌈지길 1층 마당에서 출발하는 인물 뒤를 2m쯤 거리에서 따라가며 오르막길을 함께 오릅니다. 카메라는 어깨 높이로 들고, 짐벌이나 손떨림 보정을 켜면 부드럽습니다.",
+        "durationSec": 6
+      },
+      {
+        "stopSeq": 3,
+        "kind": "PHOTO",
+        "title": "운현궁 한옥 문살 프레임",
+        "guide": "노안당 툇마루 안쪽에서 열린 문틀을 액자처럼 앞에 두고 마당과 처마를 찍습니다. 문틀이 화면 네 변을 감싸도록 맞추고, 실내가 어두우니 노출은 바깥 마당에 맞추세요.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 4,
+        "kind": "VIDEO",
+        "title": "익선동 골목 레트로 틸트업",
+        "guide": "익선동 좁은 골목 바닥 타일에서 시작해 천천히 카메라를 들어 올려 기와지붕과 레트로 간판까지 보여 줍니다. 골목이 좁아 광각으로 찍고, 사람이 적은 평일 오후가 좋습니다.",
+        "durationSec": 5
+      }
+    ]
+  },
+  {
+    "title": "서촌 골목, 느리게 걷는 오후",
+    "summary": "통인시장 엽전도시락으로 점심을 먹고 박노수미술관과 수성동계곡을 지나 윤동주문학관까지 오르는 서촌 코스",
+    "region": "서촌",
+    "totalMinutes": 220,
+    "estimatedCost": 15000,
+    "displayOrder": 8,
+    "stops": [
+      {
+        "seq": 1,
+        "name": "통인시장",
+        "description": "서촌의 오래된 골목 시장으로, 엽전을 사서 좌판 반찬을 골라 담는 엽전도시락이 명물입니다. 기름떡볶이도 꼭 맛보세요. 엽전도시락은 보통 월요일과 셋째 주 일요일에 쉽니다.",
+        "address": "서울 종로구 자하문로15길 18",
+        "lat": 37.580755,
+        "lng": 126.969996,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Tongin_Market_2018-06-17-18-28-59.jpg/960px-Tongin_Market_2018-06-17-18-28-59.jpg",
+        "startTime": "12:00",
+        "stayMinutes": 60
+      },
+      {
+        "seq": 2,
+        "name": "박노수미술관",
+        "description": "한국화가 박노수 화백이 살던 1930년대 절충식 가옥을 미술관으로 꾸민 곳입니다. 작품과 함께 집 자체의 건축미, 뒤뜰 정원을 둘러볼 수 있습니다(월요일 휴관).",
+        "address": "서울 종로구 옥인1길 34",
+        "lat": 37.581313,
+        "lng": 126.966766,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Park_No-su_Art_Museum.jpg/960px-Park_No-su_Art_Museum.jpg",
+        "startTime": "13:10",
+        "stayMinutes": 40
+      },
+      {
+        "seq": 3,
+        "name": "수성동계곡",
+        "description": "겸재 정선의 그림 속 배경이 된 인왕산 자락 계곡으로, 옛 옥인아파트를 철거하고 복원했습니다. 그림에 등장하는 돌다리 기린교가 그대로 남아 있습니다.",
+        "address": "서울 종로구 옥인동 수성동계곡",
+        "lat": 37.582086,
+        "lng": 126.964248,
+        "imageUrl": "https://postfiles.pstatic.net/20150618_49/hurgoun_1434554691671qRn6E_JPEG/6-1.jpg?type=w2",
+        "startTime": "14:00",
+        "stayMinutes": 30
+      },
+      {
+        "seq": 4,
+        "name": "윤동주문학관",
+        "description": "버려진 수도가압장과 물탱크를 고쳐 만든 시인 윤동주 문학관입니다. 뒤편 시인의 언덕에 오르면 인왕산과 서울 도심이 내려다보입니다. 수성동계곡에서는 오르막 25분 거리이고 버스(7212·1020번)로도 갈 수 있습니다(월요일 휴관).",
+        "address": "서울 종로구 창의문로 119",
+        "lat": 37.592114,
+        "lng": 126.967037,
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/%EC%9C%A4%EB%8F%99%EC%A3%BC%EB%AC%B8%ED%95%99%EA%B4%80_180707_01.jpg/960px-%EC%9C%A4%EB%8F%99%EC%A3%BC%EB%AC%B8%ED%95%99%EA%B4%80_180707_01.jpg",
+        "startTime": "14:55",
+        "stayMinutes": 45
+      }
+    ],
+    "missions": [
+      {
+        "stopSeq": 1,
+        "kind": "VIDEO",
+        "title": "엽전으로 반찬 고르는 손",
+        "guide": "통인시장 좌판 앞에서 엽전을 건네고 반찬을 도시락 칸에 담는 손을 위에서 내려다보며 찍습니다. 카메라를 도시락 바로 위에 고정하고 손만 움직이게 하면 깔끔합니다.",
+        "durationSec": 5
+      },
+      {
+        "stopSeq": 3,
+        "kind": "PHOTO",
+        "title": "수성동 기린교 돌다리",
+        "guide": "계곡 아래쪽 산책로에서 기린교를 화면 가운데 두고 뒤로 인왕산 바위가 보이게 찍습니다. 비 온 다음 날이면 물소리와 함께 계곡이 가장 살아 있습니다.",
+        "durationSec": null
+      },
+      {
+        "stopSeq": 4,
+        "kind": "PHOTO",
+        "title": "시인의 언덕 서울 전경",
+        "guide": "윤동주문학관 뒤 시인의 언덕 계단 끝에서 인물을 난간에 기대게 하고 뒤로 서울 도심과 남산을 넣습니다. 늦은 오후 햇살이 비스듬히 들어올 때 따뜻한 색감이 나옵니다.",
+        "durationSec": null
+      }
+    ]
+  }
+]

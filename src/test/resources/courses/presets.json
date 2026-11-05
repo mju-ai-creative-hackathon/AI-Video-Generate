@@ -1,0 +1,39 @@
+[
+  {
+    "title": "종로 궁궐과 시장 산책",
+    "summary": "경복궁에서 서촌, 광장시장까지 이어지는 반나절 코스",
+    "region": "종로",
+    "totalMinutes": 180,
+    "estimatedCost": 15000,
+    "displayOrder": 1,
+    "stops": [
+      {"seq": 1, "name": "경복궁", "description": "광화문에서 근정전까지", "address": "서울 종로구 사직로 161",
+       "lat": 37.5796, "lng": 126.9770, "imageUrl": "https://picsum.photos/seed/gbg/800/600", "startTime": "14:00", "stayMinutes": 70},
+      {"seq": 2, "name": "통인시장", "description": "엽전 도시락", "address": "서울 종로구 자하문로15길 18",
+       "lat": 37.5809, "lng": 126.9696, "imageUrl": "", "startTime": "15:20", "stayMinutes": 40},
+      {"seq": 3, "name": "광장시장", "description": "빈대떡과 마약김밥", "address": "서울 종로구 창경궁로 88",
+       "lat": 37.5700, "lng": 126.9996, "imageUrl": "https://picsum.photos/seed/gj/800/600", "stayMinutes": 50}
+    ],
+    "missions": [
+      {"stopSeq": 3, "kind": "VIDEO", "title": "빈대떡 굽는 소리", "guide": "철판 위 빈대떡을 5초간 찍어요", "durationSec": 5},
+      {"stopSeq": 1, "kind": "PHOTO", "title": "근정전 정면 샷", "guide": "근정전을 정면에서 담아요"}
+    ]
+  },
+  {
+    "title": "성수 숲과 카페",
+    "summary": "서울숲을 걷고 성수 카페거리로",
+    "region": "성수",
+    "totalMinutes": 150,
+    "estimatedCost": 20000,
+    "displayOrder": 2,
+    "stops": [
+      {"seq": 1, "name": "서울숲", "description": "숲길 산책", "address": "서울 성동구 뚝섬로 273",
+       "lat": 37.5444, "lng": 127.0374, "imageUrl": "https://picsum.photos/seed/sf/800/600", "startTime": "13:00", "stayMinutes": 60},
+      {"seq": 2, "name": "성수 카페거리", "description": "붉은 벽돌 카페", "address": "서울 성동구 연무장길",
+       "lat": 37.5446, "lng": 127.0557, "imageUrl": "https://picsum.photos/seed/ss/800/600", "startTime": "14:30", "stayMinutes": 60}
+    ],
+    "missions": [
+      {"stopSeq": 2, "kind": "PHOTO", "title": "벽돌 벽 앞 인증샷", "guide": "붉은 벽돌을 배경으로", "durationSec": null}
+    ]
+  }
+]

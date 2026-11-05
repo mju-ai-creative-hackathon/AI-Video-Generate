@@ -3,6 +3,8 @@ package com.example.backend.shortform;
 import com.example.backend.PostgresIntegrationTest;
 import com.example.backend.auth.AuthService;
 import com.example.backend.auth.dto.SignupRequest;
+import com.example.backend.shortform.ai.ShootingHint;
+import com.example.backend.shortform.ai.ShootingHintProvider;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -10,6 +12,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -54,6 +59,21 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
     private static final List<String> IDEMPOTENCY_KEYS = new CopyOnWriteArrayList<>();
     private static final Path STORAGE = Path.of("build", "shortform-api-" + UUID.randomUUID()).toAbsolutePath();
     private static final HttpServer AI = createServer();
+    private static final long HINTED_COURSE = 777L;
+    private static final List<List<Object>> HINT_CALLS = new CopyOnWriteArrayList<>();
+
+    @TestConfiguration
+    static class HintConfig {
+        @Bean @Primary
+        ShootingHintProvider testShootingHintProvider() {
+            return (userId, courseId, missionIds) -> {
+                HINT_CALLS.add(List.of(userId, courseId, missionIds));
+                if (courseId != HINTED_COURSE) return List.of();
+                return missionIds.stream().map(id -> new ShootingHint(id, "서울숲", id % 2 == 0 ? "VIDEO" : "PHOTO",
+                        "미션 " + id, "가이드 " + id, id % 2 == 0 ? 5 : null)).toList();
+            };
+        }
+    }
 
     @Autowired MockMvc mvc;
     @Autowired AuthService auth;
@@ -107,6 +127,7 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
         RESULT_STATUS.set("PROCESSING");
         SUBMISSIONS.clear();
         IDEMPOTENCY_KEYS.clear();
+        HINT_CALLS.clear();
         owner = token("owner");
         other = token("other");
     }
@@ -133,6 +154,21 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
         return mapper.readTree(mvc.perform(post("/api/shortforms").header("Authorization", owner)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"서울의 하루\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+    }
+
+    private JsonNode createProject(String body) throws Exception {
+        return mapper.readTree(mvc.perform(post("/api/shortforms").header("Authorization", owner)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+    }
+
+    private JsonNode manifest(String multipartBody) {
+        int metadata = multipartBody.indexOf("name=\"manifest\"");
+        assertThat(metadata).isGreaterThanOrEqualTo(0);
+        int start = multipartBody.indexOf("\r\n\r\n", metadata) + 4;
+        int end = multipartBody.indexOf("\r\n--", start);
+        return mapper.readTree(new String(multipartBody.substring(start, end).getBytes(StandardCharsets.ISO_8859_1),
+                StandardCharsets.UTF_8));
     }
 
     private List<String> upload(String projectId, int count) throws Exception {
@@ -220,6 +256,8 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
         JsonNode manifest = mapper.readTree(multipartBody.substring(start, end));
         assertThat(manifest.get("style").asText()).isEqualTo("CINEMATIC");
         assertThat(manifest.get("mood").asText()).isEqualTo("URBAN");
+        assertThat(manifest.has("shootingHints")).isFalse();
+        assertThat(HINT_CALLS).isEmpty();
         for (int position = 0; position < ids.size(); position++) {
             assertThat(manifest.get("sources").get(position).get("assetId").asText()).isEqualTo(ids.get(position));
             assertThat(manifest.get("sources").get(position).get("position").asInt()).isEqualTo(position);
@@ -276,5 +314,59 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
         assertThat(result.get("errorCode").asText()).isNotBlank();
         assertThat(result.get("errorMessage").asText()).doesNotContain("temporary failure");
         assertThat(result.get("videoUrl").isNull()).isTrue();
+    }
+
+    @Test
+    void createsProjectWithOptionalCourseLink() throws Exception {
+        JsonNode plain = createProject();
+        assertThat(plain.get("courseId").isNull()).isTrue();
+        assertThat(plain.get("missionIds").size()).isZero();
+
+        JsonNode linked = createProject("{\"title\":\"코스 브이로그\",\"courseId\":777,\"missionIds\":[3,1,3]}");
+        assertThat(linked.get("courseId").asLong()).isEqualTo(777L);
+        assertThat(linked.get("missionIds").toString()).isEqualTo("[3,1]");
+        JsonNode fetched = mapper.readTree(mvc.perform(get("/api/shortforms/" + linked.get("id").asText())
+                        .header("Authorization", owner)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(fetched.get("courseId").asLong()).isEqualTo(777L);
+        assertThat(fetched.get("missionIds").toString()).isEqualTo("[3,1]");
+
+        mvc.perform(post("/api/shortforms").header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"t\",\"missionIds\":[1]}")).andExpect(status().isBadRequest());
+        var tooMany = java.util.stream.LongStream.rangeClosed(1, 21).boxed().toList();
+        mvc.perform(post("/api/shortforms").header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(java.util.Map.of("title", "t", "courseId", 1, "missionIds", tooMany))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void forwardsShootingHintsOnlyWhenProviderReturnsSome() throws Exception {
+        JsonNode hinted = createProject("{\"title\":\"코스 브이로그\",\"courseId\":777,\"missionIds\":[1,2]}");
+        String hintedId = hinted.get("id").asText();
+        submit(hintedId, upload(hintedId, 5), UUID.randomUUID());
+        worker.runOnce();
+        assertThat(SUBMISSIONS).hasSize(1);
+        JsonNode hints = manifest(SUBMISSIONS.getFirst()).get("shootingHints");
+        assertThat(hints.size()).isEqualTo(2);
+        assertThat(hints.get(0).get("missionId").asLong()).isEqualTo(1L);
+        assertThat(hints.get(0).get("kind").asText()).isEqualTo("PHOTO");
+        assertThat(hints.get(0).get("placeName").asText()).isEqualTo("서울숲");
+        assertThat(hints.get(1).get("kind").asText()).isEqualTo("VIDEO");
+        assertThat(hints.get(1).get("durationSec").asInt()).isEqualTo(5);
+        assertThat(hints.get(1).get("title").asText()).isEqualTo("미션 2");
+        assertThat(hints.get(1).get("guide").asText()).isEqualTo("가이드 2");
+        assertThat(HINT_CALLS).hasSize(1);
+        assertThat(HINT_CALLS.getFirst().get(1)).isEqualTo(777L);
+        assertThat(HINT_CALLS.getFirst().get(2)).isEqualTo(List.of(1L, 2L));
+
+        RESULT_STATUS.set("SUCCEEDED");
+        worker.runOnce();
+        SUBMISSIONS.clear();
+        JsonNode empty = createProject("{\"title\":\"힌트 없는 코스\",\"courseId\":778}");
+        String emptyId = empty.get("id").asText();
+        submit(emptyId, upload(emptyId, 5), UUID.randomUUID());
+        worker.runOnce();
+        assertThat(SUBMISSIONS).hasSize(1);
+        assertThat(manifest(SUBMISSIONS.getFirst()).has("shootingHints")).isFalse();
     }
 }
