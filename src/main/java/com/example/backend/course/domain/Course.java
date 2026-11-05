@@ -113,6 +113,14 @@ public class Course {
         return stop;
     }
 
+    /** 여러 날 코스용: day 는 1부터 시작하는 여행 일차. */
+    public CourseStop addStop(int seq, int day, String name, String description, String address, double lat, double lng,
+                              String imageUrl, String externalPlaceId, LocalTime startTime, int stayMinutes) {
+        CourseStop stop = addStop(seq, name, description, address, lat, lng, imageUrl, externalPlaceId, startTime, stayMinutes);
+        stop.setDay(day);
+        return stop;
+    }
+
     public CourseMission addMission(int stopSeq, MissionKind kind, String title, String guide, Integer durationSec) {
         CourseMission mission = new CourseMission(this, stopSeq, kind, title, guide, durationSec);
         missions.add(mission);

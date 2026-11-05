@@ -54,6 +54,18 @@ public class CourseStop {
     @Column(name = "stay_minutes", nullable = false)
     private int stayMinutes;
 
+    // 기존 행 호환을 위해 nullable. null 이면 1일차.
+    @Column(name = "day_no")
+    private Integer day;
+
+    public int getDay() {
+        return day == null ? 1 : day;
+    }
+
+    void setDay(int day) {
+        this.day = Math.max(1, day);
+    }
+
     protected CourseStop() {
     }
 

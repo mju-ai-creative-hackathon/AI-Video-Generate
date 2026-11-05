@@ -4,9 +4,10 @@ import com.example.backend.course.domain.CourseStop;
 
 import java.time.format.DateTimeFormatter;
 
-/** startTime: "HH:mm" 또는 null. */
+/** day: 여행 일차(1부터). startTime: 그날의 "HH:mm" 또는 null. */
 public record CourseStopResponse(
         int seq,
+        int day,
         String name,
         String description,
         String address,
@@ -21,6 +22,7 @@ public record CourseStopResponse(
     public static CourseStopResponse of(CourseStop stop) {
         return new CourseStopResponse(
                 stop.getSeq(),
+                stop.getDay(),
                 stop.getName(),
                 stop.getDescription(),
                 stop.getAddress(),

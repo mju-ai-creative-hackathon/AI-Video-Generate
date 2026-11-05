@@ -216,16 +216,16 @@ class GeminiCourseGeneratorTests {
             if (i > 0) courses.append(',');
             courses.append("{\"title\":\"").append("가".repeat(150)).append("\",\"summary\":\"s\",\"region\":\"r\",")
                     .append("\"totalMinutes\":-5,\"estimatedCost\":-1,\"stops\":[");
-            for (int s = 1; s <= 7; s++) {
+            for (int s = 1; s <= 10; s++) {
                 if (s > 1) courses.append(',');
                 courses.append("{\"seq\":").append(s).append(",\"name\":\"장소").append(s)
                         .append("\",\"description\":\"").append("설".repeat(1500))
                         .append("\",\"stayMinutes\":\"40\"}");
             }
-            courses.append(",{\"seq\":8,\"name\":\"\"},\"oops\"],\"missions\":[");
+            courses.append(",{\"seq\":11,\"name\":\"\"},\"oops\"],\"missions\":[");
             courses.append("{\"stopSeq\":1,\"kind\":\"GIF\",\"title\":\"t\",\"guide\":\"g\"},");
             courses.append("{\"stopSeq\":99,\"kind\":\"PHOTO\",\"title\":\"t\",\"guide\":\"g\"},");
-            for (int m = 0; m < 6; m++) {
+            for (int m = 0; m < 30; m++) {
                 courses.append("{\"stopSeq\":1,\"kind\":\"VIDEO\",\"title\":\"t\",\"guide\":\"")
                         .append("구".repeat(1200)).append("\",\"durationSec\":9999},");
             }
@@ -241,13 +241,13 @@ class GeminiCourseGeneratorTests {
         assertEquals(3, result.size());
         for (AiCourseDraft c : result) {
             assertEquals(100, c.title().length());
-            assertEquals(5, c.stops().size());
+            assertEquals(8, c.stops().size());
             assertEquals(1000, c.stops().get(0).description().length());
             assertEquals(40, c.stops().get(0).stayMinutes());
             assertEquals("장소1", c.stops().get(0).searchQuery());
-            assertEquals(200, c.totalMinutes());
+            assertEquals(320, c.totalMinutes());
             assertNull(c.estimatedCost());
-            assertEquals(4, c.missions().size());
+            assertEquals(24, c.missions().size());
             for (AiMissionDraft m : c.missions()) {
                 assertEquals("VIDEO", m.kind());
                 assertEquals(1, m.stopSeq());

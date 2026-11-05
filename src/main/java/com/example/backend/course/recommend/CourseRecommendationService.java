@@ -175,7 +175,7 @@ public class CourseRecommendationService {
         for (ResolvedStop r : stops) {
             KakaoPlace p = r.place();
             String address = p.roadAddress() == null || p.roadAddress().isBlank() ? p.address() : p.roadAddress();
-            course.addStop(seq, truncate(p.name(), 100), truncate(r.draft().description(), 1000), truncate(address, 255),
+            course.addStop(seq, r.draft().day(), truncate(p.name(), 100), truncate(r.draft().description(), 1000), truncate(address, 255),
                     p.lat(), p.lng(), truncate(r.imageUrl(), 1000), truncate(p.id(), 50),
                     parseTime(r.draft().startTime()), Math.max(r.draft().stayMinutes(), 1));
             seqMap.put(r.draft().seq(), seq);
