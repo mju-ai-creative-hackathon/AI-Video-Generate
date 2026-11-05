@@ -25,4 +25,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     @Modifying
     @Query("delete from Bookmark b where b.user.id = :userId and b.place.id = :placeId")
     int deleteByUserIdAndPlaceId(@Param("userId") UUID userId, @Param("placeId") Long placeId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from Bookmark b where b.user.id = :userId")
+    int deleteByUserId(@Param("userId") UUID userId);
 }

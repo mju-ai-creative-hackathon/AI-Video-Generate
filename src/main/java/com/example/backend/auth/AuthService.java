@@ -1,5 +1,6 @@
 package com.example.backend.auth;
 
+import com.example.backend.auth.domain.RefreshSessionRepository;
 import com.example.backend.auth.domain.User;
 import com.example.backend.auth.domain.UserRepository;
 import com.example.backend.auth.dto.AuthResponse;
@@ -8,6 +9,7 @@ import com.example.backend.auth.dto.RefreshTokenRequest;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
 import com.example.backend.auth.exception.AuthException;
+import com.example.backend.place.domain.BookmarkRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,16 +26,22 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final RefreshSessionRepository refreshSessionRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(
             UserRepository userRepository,
             JwtTokenProvider jwtTokenProvider,
-            RefreshTokenService refreshTokenService
+            RefreshTokenService refreshTokenService,
+            RefreshSessionRepository refreshSessionRepository,
+            BookmarkRepository bookmarkRepository
     ) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
+        this.refreshSessionRepository = refreshSessionRepository;
+        this.bookmarkRepository = bookmarkRepository;
     }
 
     @Transactional
@@ -104,6 +112,17 @@ public class AuthService {
     @Transactional
     public void logout(RefreshTokenRequest request) {
         refreshTokenService.revokeFamily(request.refreshToken());
+    }
+
+    @Transactional
+    public void deleteAccount(String authorizationHeader) {
+        UUID userId = jwtTokenProvider.parseUserId(extractBearerToken(authorizationHeader));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+
+        refreshSessionRepository.deleteByUserId(userId);
+        bookmarkRepository.deleteByUserId(userId);
+        userRepository.delete(user);
     }
 
     private AuthResponse createAuthResponse(User user) {

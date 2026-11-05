@@ -119,6 +119,16 @@ iOS Google Sign-In SDK에서 받은 ID Token을 전달합니다. 백엔드 설�
 Authorization: Bearer <accessToken>
 ```
 
+### 회원탈퇴
+
+`DELETE /api/auth/me`
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+회원 계정과 해당 사용자의 Refresh Session 및 북마크를 삭제하며 성공 시 `204 No Content`를 반환합니다.
+
 운영 환경에서는 `JWT_SECRET`을 32바이트 이상의 충분히 긴 무작위 값으로 반드시 설정하세요.
 
 데이터까지 삭제할 때만 `docker compose down -v`를 사용합니다.

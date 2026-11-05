@@ -28,4 +28,8 @@ public interface RefreshSessionRepository extends JpaRepository<RefreshSession, 
             @Param("familyId") UUID familyId,
             @Param("revokedAt") Instant revokedAt
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from RefreshSession session where session.user.id = :userId")
+    int deleteByUserId(@Param("userId") UUID userId);
 }
