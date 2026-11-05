@@ -2,6 +2,7 @@ package com.example.backend.place;
 
 import com.example.backend.auth.AuthService;
 import com.example.backend.auth.domain.UserRepository;
+import com.example.backend.auth.domain.RefreshSessionRepository;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.place.domain.BookmarkRepository;
 import com.example.backend.place.domain.Place;
@@ -44,6 +45,9 @@ class PlaceApiIntegrationTests {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RefreshSessionRepository refreshSessionRepository;
+
     private Place walk;
     private Place cafe;
     private Place walk2;
@@ -63,6 +67,7 @@ class PlaceApiIntegrationTests {
     void cleanUp() {
         bookmarkRepository.deleteAll();
         placeRepository.deleteAll();
+        refreshSessionRepository.deleteAll();
         userRepository.deleteAll();
     }
 

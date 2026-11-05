@@ -3,6 +3,7 @@ package com.example.backend.auth;
 import com.example.backend.auth.dto.AuthResponse;
 import com.example.backend.auth.dto.GoogleLoginRequest;
 import com.example.backend.auth.dto.LoginRequest;
+import com.example.backend.auth.dto.RefreshTokenRequest;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
 import jakarta.validation.Valid;
@@ -44,5 +45,16 @@ public class AuthController {
     @PostMapping("/google")
     public AuthResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
         return googleLoginService.login(request.idToken());
+    }
+
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return authService.refresh(request);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -4,6 +4,7 @@ import com.example.backend.auth.domain.User;
 import com.example.backend.auth.domain.UserRepository;
 import com.example.backend.auth.dto.AuthResponse;
 import com.example.backend.auth.dto.LoginRequest;
+import com.example.backend.auth.dto.RefreshTokenRequest;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
 import com.example.backend.auth.exception.AuthException;
@@ -22,11 +23,17 @@ import java.util.UUID;
 public class AuthService {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(UserRepository userRepository, JwtTokenProvider jwtTokenProvider) {
+    public AuthService(
+            UserRepository userRepository,
+            JwtTokenProvider jwtTokenProvider,
+            RefreshTokenService refreshTokenService
+    ) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -48,6 +55,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(request.email()))
                 .orElseThrow(AuthService::invalidCredentials);
@@ -80,11 +88,32 @@ public class AuthService {
         return UserResponse.from(user);
     }
 
+    @Transactional(noRollbackFor = AuthException.class)
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        RefreshTokenService.RotatedRefreshToken rotated = refreshTokenService.rotate(request.refreshToken());
+        return new AuthResponse(
+                jwtTokenProvider.createToken(rotated.user().getId()),
+                "Bearer",
+                jwtTokenProvider.getExpirationSeconds(),
+                rotated.token(),
+                rotated.expiresIn(),
+                UserResponse.from(rotated.user())
+        );
+    }
+
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revokeFamily(request.refreshToken());
+    }
+
     private AuthResponse createAuthResponse(User user) {
+        RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user);
         return new AuthResponse(
                 jwtTokenProvider.createToken(user.getId()),
                 "Bearer",
                 jwtTokenProvider.getExpirationSeconds(),
+                refreshToken.token(),
+                refreshToken.expiresIn(),
                 UserResponse.from(user)
         );
     }

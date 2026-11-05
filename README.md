@@ -71,7 +71,32 @@ docker compose down
 }
 ```
 
-회원가입과 로그인은 `accessToken`, `tokenType`, `expiresIn`, `user`를 반환합니다.
+회원가입과 로그인은 `accessToken`, `refreshToken`, 각각의 만료 시간과 `user`를 반환합니다.
+Access Token은 1시간, Refresh Token은 로그인 시점부터 고정 7일 동안 유효합니다.
+
+### 토큰 재발급
+
+`POST /api/auth/refresh`
+
+```json
+{
+  "refreshToken": "CURRENT_REFRESH_TOKEN"
+}
+```
+
+재발급 시 Access Token과 Refresh Token이 모두 교체됩니다. 이전 Refresh Token을 다시 사용하면 해당 로그인 세션 전체가 폐기됩니다.
+
+### 로그아웃
+
+`POST /api/auth/logout`
+
+```json
+{
+  "refreshToken": "CURRENT_REFRESH_TOKEN"
+}
+```
+
+로그아웃은 해당 Refresh Session을 폐기하며 성공 시 `204 No Content`를 반환합니다.
 
 ### iOS Google 로그인
 

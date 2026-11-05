@@ -29,6 +29,8 @@ Content-Type: application/json
   "accessToken": "SERVICE_JWT",
   "tokenType": "Bearer",
   "expiresIn": 3600,
+  "refreshToken": "RANDOM_REFRESH_TOKEN",
+  "refreshExpiresIn": 604800,
   "user": {
     "id": "...",
     "email": "user@example.com",

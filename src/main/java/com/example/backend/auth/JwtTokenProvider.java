@@ -21,7 +21,8 @@ public class JwtTokenProvider {
     private static final Base64.Decoder BASE64_URL_DECODER = Base64.getUrlDecoder();
     private static final String HEADER = encode("{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
     private static final Pattern PAYLOAD_PATTERN = Pattern.compile(
-            "\\{\"sub\":\"([0-9a-fA-F-]{36})\",\"iat\":(\\d+),\"exp\":(\\d+)\\}"
+            "\\{\"sub\":\"([0-9a-fA-F-]{36})\",\"iat\":(\\d+),\"exp\":(\\d+),"
+                    + "\"jti\":\"[0-9a-fA-F-]{36}\"\\}"
     );
 
     private final byte[] secret;
@@ -44,7 +45,8 @@ public class JwtTokenProvider {
     public String createToken(UUID userId) {
         Instant now = Instant.now();
         String claims = "{\"sub\":\"" + userId + "\",\"iat\":" + now.getEpochSecond()
-                + ",\"exp\":" + now.plusSeconds(expirationSeconds).getEpochSecond() + "}";
+                + ",\"exp\":" + now.plusSeconds(expirationSeconds).getEpochSecond()
+                + ",\"jti\":\"" + UUID.randomUUID() + "\"}";
         String payload = encode(claims);
         String unsignedToken = HEADER + "." + payload;
         return unsignedToken + "." + encode(sign(unsignedToken));

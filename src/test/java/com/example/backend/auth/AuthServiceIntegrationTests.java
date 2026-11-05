@@ -1,9 +1,11 @@
 package com.example.backend.auth;
 
 import com.example.backend.auth.domain.User;
+import com.example.backend.auth.domain.RefreshSessionRepository;
 import com.example.backend.auth.domain.UserRepository;
 import com.example.backend.auth.dto.AuthResponse;
 import com.example.backend.auth.dto.LoginRequest;
+import com.example.backend.auth.dto.RefreshTokenRequest;
 import com.example.backend.auth.dto.SignupRequest;
 import com.example.backend.auth.dto.UserResponse;
 import com.example.backend.auth.exception.AuthException;
@@ -26,8 +28,12 @@ class AuthServiceIntegrationTests {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RefreshSessionRepository refreshSessionRepository;
+
     @BeforeEach
     void cleanUp() {
+        refreshSessionRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -55,6 +61,8 @@ class AuthServiceIntegrationTests {
         assertThat(response.accessToken()).isNotBlank();
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.expiresIn()).isEqualTo(3600);
+        assertThat(response.refreshToken()).hasSize(43);
+        assertThat(response.refreshExpiresIn()).isEqualTo(604800);
     }
 
     @Test
@@ -117,5 +125,51 @@ class AuthServiceIntegrationTests {
         assertThat(authService.login(new LoginRequest("user@example.com", "password123")).user().id())
                 .isEqualTo(signup.user().id());
         assertThat(userRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void refreshRotatesBothTokensAndRejectsReplay() {
+        AuthResponse login = authService.signup(
+                new SignupRequest("refresh@example.com", "리프레시 사용자", "password123")
+        );
+
+        AuthResponse refreshed = authService.refresh(new RefreshTokenRequest(login.refreshToken()));
+
+        assertThat(refreshed.accessToken()).isNotBlank().isNotEqualTo(login.accessToken());
+        assertThat(refreshed.refreshToken()).isNotEqualTo(login.refreshToken());
+        assertThat(refreshed.refreshExpiresIn()).isPositive().isLessThanOrEqualTo(604800);
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequest(login.refreshToken())))
+                .isInstanceOfSatisfying(AuthException.class, exception ->
+                        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequest(refreshed.refreshToken())))
+                .isInstanceOfSatisfying(AuthException.class, exception ->
+                        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
+
+    @Test
+    void logoutRevokesRefreshSession() {
+        AuthResponse login = authService.signup(
+                new SignupRequest("logout@example.com", "로그아웃 사용자", "password123")
+        );
+
+        authService.logout(new RefreshTokenRequest(login.refreshToken()));
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequest(login.refreshToken())))
+                .isInstanceOfSatisfying(AuthException.class, exception ->
+                        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
+
+    @Test
+    void databaseStoresOnlyRefreshTokenHash() {
+        AuthResponse login = authService.signup(
+                new SignupRequest("hash@example.com", "해시 사용자", "password123")
+        );
+
+        var storedSession = refreshSessionRepository.findAll().getFirst();
+        assertThat(storedSession.getTokenHash())
+                .hasSize(64)
+                .isNotEqualTo(login.refreshToken());
     }
 }
