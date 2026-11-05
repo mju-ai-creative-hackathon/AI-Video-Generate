@@ -101,7 +101,7 @@ public class RenderStateService {
         if (job.externalJobId == null) job.status = RenderStatus.SUBMITTING;
         return new Claim(job.id, job.leaseToken, job.externalJobId, new AiRenderClient.RenderSubmission(
                 job.id, job.projectId, null, job.style.name(), job.style.label(), job.mood.name(), job.mood.label(),
-                job.musicId, List.copyOf(sources), List.of()));
+                job.musicId, job.templateId, List.copyOf(sources), List.of()));
     }
 
     /**

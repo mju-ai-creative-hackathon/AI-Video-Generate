@@ -100,7 +100,19 @@ curl -X POST 'http://localhost:8080/api/shortforms/PROJECT_ID/assets' \
 
 `GET /api/shortforms/options` 응답의 `renderingAvailable`로 제작 버튼 활성화 여부를 판단합니다.
 스타일은 `CINEMATIC`, `DYNAMIC`, `VLOG`, `MINIMAL`, 무드는 `URBAN`, `ROMANTIC`, `CALM`, `ENERGETIC`입니다.
-옵션은 AI 담당자와 협의하기 위한 코드이며 실제 효과·배경 음악·미리보기 파일을 포함하지 않습니다.
+스타일·무드는 대본의 분위기 설명으로만 쓰입니다.
+
+`templates`와 `musics`는 AI 서버에서 받아 온 선택지입니다(1분 캐시). AI 서버가 꺼져 있으면 빈 배열입니다.
+
+```json
+"templates":[{"code":"reel_mood_trip_temp_v1","label":"감성 여행 몽타주","hookType":"장소 제시형",
+              "audioMode":"MUSIC","defaultMusicId":null}],
+"musics":[{"code":"calm_piano_01","label":"잔잔한 피아노","moods":["잔잔함"]}]
+```
+
+- `audioMode`: `NARRATION`은 AI 나레이션과 자막, `MUSIC`은 나레이션 없이 음악만 넣고 컷 길이도 템플릿대로 맞춥니다.
+- `MUSIC` 템플릿은 음악이 꼭 있어야 합니다. `defaultMusicId`가 없으면 제작 요청이나 검토 화면에서 음악을 골라야 승인됩니다.
+- `NARRATION` 템플릿에 음악을 고르면 나레이션이 나올 때 작아지는 배경 음악으로 들어갑니다.
 
 ### 제작 요청
 
@@ -119,8 +131,16 @@ Content-Type: application/json
 ```
 
 `assetIds` 배열 순서를 편집 순서로 전달합니다. 이 프로젝트에 속한 소스만 선택할 수 있으며 중복 ID는 거절합니다.
-`musicId`는 선택적 AI 측 음악 식별자입니다. 백엔드가 음악을 다운로드하거나 저작권을 검증하지 않습니다.
-음악 목록·실제 사용 가능한 식별자는 AI 담당자와 추가 합의해야 합니다.
+`templateId`와 `musicId`는 선택이며 `options`의 `templates[].code`, `musics[].code` 값입니다.
+
+```json
+{"style":"VLOG","mood":"CALM","assetIds":["..."],"templateId":"reel_mood_trip_temp_v1","musicId":"calm_piano_01"}
+```
+
+- `templateId`를 빼면 AI가 사진 구성에 가장 맞는 템플릿을 자동으로 고릅니다.
+- `musicId`를 빼면 템플릿의 기본 음악을 씁니다. 검토 화면에서 `music_id`로 바꿀 수 있습니다.
+- 목록에 없는 값이면 400입니다. 곡의 라이선스는 AI 서버 쪽 `data/music.yaml`에서 관리합니다.
+- 제작 상태 응답의 `templateId`는 요청한 템플릿입니다(자동 선택이면 `null`). 실제로 쓰인 템플릿은 스토리보드의 `format_id`입니다.
 
 같은 프로젝트에서 같은 키·같은 요청을 다시 보내면 기존 제작 작업을 반환합니다.
 같은 키를 다른 요청에 재사용하거나 진행 중인 다른 작업이 있으면 409입니다.
@@ -177,6 +197,14 @@ Authorization: Bearer <accessToken>
 응답의 `version`, `title`, `cuts[]`(컷 순서, 역할, 나레이션, 화면 문구, 샷 설계, 영상 구간 `source_clip`),
 `photos[]`, `warnings`를 화면에 씁니다. `cuts[].media.image_url`, `video_url`은 이 서버의 서명 URL로 바뀌어
 있어 `<img>`·AVPlayer에 바로 넣을 수 있습니다. 1시간 뒤 만료되면 스토리보드를 다시 조회합니다.
+
+**수정할 수 있는 것:** 제목(`title`), 컷마다 대본(`narration`)·화면 문구(`shot.on_screen_text`)·순서(`position`)·
+사진 교체(`photo_id`)·길이(`target_sec`)·샷과 크롭(`shot`)·영상 구간과 소리(`source_clip`), 컷 추가·삭제,
+그리고 음악(`music_id`). 조회 응답에는 `audio_mode`(`narration` 또는 `music`), `music_id`, `music_name`도 있습니다.
+
+- `audio_mode`가 `music`이면 나레이션은 비어 있고 쓰지 않습니다. 대본 편집 대신 화면 문구와 음악을 편집합니다.
+- `music_id`는 `options.musics[].code` 값이며, PUT에서 빼면 그대로 두고 `null`을 보내면 음악을 뺍니다.
+  음악 전용 템플릿에서 음악을 빼면 승인할 수 없습니다(`400`).
 
 ```http
 PUT /api/shortforms/PROJECT_ID/renders/RENDER_ID/storyboard
@@ -235,6 +263,7 @@ AI 생성 요청에 OpenAI API를 직접 호출하지 않습니다.
 | 메서드 | AI 서버 경로 | 백엔드가 쓰는 곳 |
 | --- | --- | --- |
 | GET | `/health` | `options.renderingAvailable` (30초 캐시) |
+| GET | `/catalog` | `options.templates`, `options.musics` (1분 캐시), 제작 요청 값 확인 |
 | POST | `/renders` | 워커: 소스 제출, 초안 생성 시작 |
 | GET | `/renders/{jobId}` | 워커: 상태 조회(검토 중 포함) |
 | GET | `/renders/{jobId}/video` | 워커: 완성본 내려받기 |
@@ -267,6 +296,7 @@ multipart 필드:
   "mood":"URBAN",
   "moodLabel":"도시적인",
   "musicId":null,
+  "formatId":"reel_mood_trip_temp_v1",
   "sources":[
     {"assetId":"ASSET_UUID","missionId":null,"position":0,"contentType":"image/jpeg","filename":"generated-name.jpg"}
   ]

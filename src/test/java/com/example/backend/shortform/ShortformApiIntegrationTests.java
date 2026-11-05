@@ -168,6 +168,11 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
                     respond(exchange, 404, "application/json", "{}".getBytes(StandardCharsets.UTF_8));
                 }
             });
+            server.createContext("/catalog", exchange ->
+                    respond(exchange, 200, "application/json", ("{\"templates\":[{\"id\":\"reel_mood_trip_temp_v1\","
+                            + "\"name\":\"감성 여행 몽타주\",\"hook_type\":\"장소 제시형\",\"audio_mode\":\"music\","
+                            + "\"music\":null}],\"music\":[{\"id\":\"calm_piano_01\",\"name\":\"잔잔한 피아노\","
+                            + "\"moods\":[\"잔잔함\"]}]}").getBytes(StandardCharsets.UTF_8)));
             server.createContext("/health", exchange ->
                     respond(exchange, 200, "application/json", "{\"status\":\"ok\"}".getBytes(StandardCharsets.UTF_8)));
             server.start();
@@ -463,6 +468,35 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray();
         assertThat(video).isEqualTo(RESULT_MP4);
         mvc.perform(get(base + "/video")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listsTemplatesAndForwardsTheChosenTemplateAndMusic() throws Exception {
+        JsonNode options = mapper.readTree(mvc.perform(get("/api/shortforms/options"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(options.get("templates").get(0).get("code").asText()).isEqualTo("reel_mood_trip_temp_v1");
+        assertThat(options.get("templates").get(0).get("audioMode").asText()).isEqualTo("MUSIC");
+        assertThat(options.get("musics").get(0).get("code").asText()).isEqualTo("calm_piano_01");
+
+        String projectId = createProject().get("id").asText();
+        var ids = upload(projectId, 5);
+        String unknown = mapper.writeValueAsString(java.util.Map.of("assetIds", ids, "style", "VLOG",
+                "mood", "CALM", "templateId", "no_such_template"));
+        mvc.perform(post("/api/shortforms/" + projectId + "/renders").header("Authorization", owner)
+                .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
+                .content(unknown)).andExpect(status().isBadRequest());
+
+        String chosen = mapper.writeValueAsString(java.util.Map.of("assetIds", ids, "style", "VLOG",
+                "mood", "CALM", "templateId", "reel_mood_trip_temp_v1", "musicId", "calm_piano_01"));
+        JsonNode render = mapper.readTree(mvc.perform(post("/api/shortforms/" + projectId + "/renders")
+                        .header("Authorization", owner).header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON).content(chosen))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(render.get("templateId").asText()).isEqualTo("reel_mood_trip_temp_v1");
+        worker.runOnce();
+        JsonNode manifest = manifest(SUBMISSIONS.getFirst());
+        assertThat(manifest.get("formatId").asText()).isEqualTo("reel_mood_trip_temp_v1");
+        assertThat(manifest.get("musicId").asText()).isEqualTo("calm_piano_01");
     }
 
     @Test

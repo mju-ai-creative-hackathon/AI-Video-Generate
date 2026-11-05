@@ -16,6 +16,8 @@ public class RenderJob {
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) VideoStyle style;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) VideoMood mood;
     @Column(length = 100) String musicId;
+    /** AI 서버 템플릿 id. null이면 AI가 자동으로 고른다. */
+    @Column(length = 64) String templateId;
     @ElementCollection
     @CollectionTable(name = "shortform_render_sources", joinColumns = @JoinColumn(name = "render_job_id"))
     @OrderColumn(name = "source_order")
@@ -49,6 +51,7 @@ public class RenderJob {
     RenderJob(UUID projectId, UUID key, ShortformDtos.RenderRequest request) {
         this.projectId = projectId; this.idempotencyKey = key;
         this.style = request.style(); this.mood = request.mood(); this.musicId = request.musicId();
+        this.templateId = request.templateId();
         this.assetIds = new ArrayList<>(request.assetIds()); this.status = RenderStatus.QUEUED;
         this.phase = RenderPhase.DRAFTING;
         this.createdAt = Instant.now(); this.updatedAt = createdAt; this.nextAttemptAt = createdAt;
@@ -58,7 +61,7 @@ public class RenderJob {
     }
     boolean sameRequest(ShortformDtos.RenderRequest request) {
         return style == request.style() && mood == request.mood() && Objects.equals(musicId, request.musicId())
-                && assetIds.equals(request.assetIds());
+                && Objects.equals(templateId, request.templateId()) && assetIds.equals(request.assetIds());
     }
     void fail(String code, String message) {
         status = RenderStatus.FAILED; errorCode = code; errorMessage = message;

@@ -61,6 +61,9 @@ public class HttpAiRenderClient implements AiRenderClient {
     private final HttpClient client;
     private volatile long healthCheckedAt;
     private volatile boolean healthy;
+    private static final long CATALOG_CACHE_MS = 60_000;
+    private volatile Catalog catalog;
+    private volatile long catalogAt;
 
     @Autowired
     public HttpAiRenderClient(
@@ -135,7 +138,7 @@ public class HttpAiRenderClient implements AiRenderClient {
                     .toList();
             var manifest = new Manifest(submission.jobId(), submission.projectId(), submission.title(),
                     submission.style(), submission.styleLabel(), submission.mood(), submission.moodLabel(),
-                    submission.musicId(), sourceMetadata, submission.shootingHints());
+                    submission.musicId(), submission.templateId(), sourceMetadata, submission.shootingHints());
             var parts = new ArrayList<HttpRequest.BodyPublisher>();
             parts.add(text("--" + boundary + "\r\nContent-Disposition: form-data; name=\"manifest\"\r\n"
                     + "Content-Type: application/json\r\n\r\n"));
@@ -294,6 +297,49 @@ public class HttpAiRenderClient implements AiRenderClient {
         // 완료 직후 파일이 아직 없을 수 있어 404도 재시도한다.
         if (response.statusCode() == 404) throw unavailable();
         throw failureFor(response.statusCode());
+    }
+
+    @Override
+    public Catalog catalog() {
+        if (!isConfigured()) return Catalog.EMPTY;
+        long now = System.currentTimeMillis();
+        Catalog cached = catalog;
+        if (cached != null && now - catalogAt < CATALOG_CACHE_MS) return cached;
+        Catalog result;
+        try {
+            JsonNode json = exchange(requestBuilder("/catalog", Duration.ofSeconds(5)).GET().build(),
+                    Duration.ofSeconds(5));
+            var templates = new ArrayList<TemplateInfo>();
+            for (JsonNode item : json.path("templates")) {
+                String id = text(item, "id");
+                if (id == null || !PHOTO_ID.matcher(id).matches()) continue;
+                String music = text(item, "music");
+                templates.add(new TemplateInfo(id, limit(text(item, "name"), 100),
+                        limit(text(item, "hook_type"), 100),
+                        "music".equals(text(item, "audio_mode")) ? "music" : "narration",
+                        music != null && PHOTO_ID.matcher(music).matches() ? music : null));
+            }
+            var music = new ArrayList<MusicInfo>();
+            for (JsonNode item : json.path("music")) {
+                String id = text(item, "id");
+                if (id == null || !PHOTO_ID.matcher(id).matches()) continue;
+                var moods = new ArrayList<String>();
+                for (JsonNode mood : item.path("moods")) if (mood.isString()) moods.add(limit(mood.asString(), 40));
+                music.add(new MusicInfo(id, limit(text(item, "name"), 100), moods));
+            }
+            result = new Catalog(templates, music);
+        } catch (RuntimeException e) {
+            // 목록은 보조 정보다. 실패하면 빈 목록을 짧게 캐시해 매 요청마다 기다리지 않게 한다.
+            result = Catalog.EMPTY;
+        }
+        catalog = result;
+        catalogAt = now;
+        return result;
+    }
+
+    private static String text(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value != null && value.isString() ? value.asString() : null;
     }
 
     private HttpRequest.Builder jsonRequest(String path, byte[] json) {
@@ -500,6 +546,7 @@ public class HttpAiRenderClient implements AiRenderClient {
                             String mood,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String moodLabel,
                             String musicId,
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String formatId,
                             List<ManifestSource> sources,
                             @JsonInclude(JsonInclude.Include.NON_EMPTY) List<ShootingHint> shootingHints) {}
     private record ManifestSource(UUID assetId, UUID missionId, int position, String contentType, String filename) {}

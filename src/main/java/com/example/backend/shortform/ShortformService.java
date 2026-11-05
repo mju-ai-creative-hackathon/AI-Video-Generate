@@ -69,9 +69,14 @@ public class ShortformService {
     }
 
     public Options options() {
+        boolean available = ai.isAvailable();
+        var catalog = available ? ai.catalog() : AiRenderClient.Catalog.EMPTY;
         return new Options(Arrays.stream(VideoStyle.values()).map(v -> new Option(v.name(), v.label())).toList(),
                 Arrays.stream(VideoMood.values()).map(v -> new Option(v.name(), v.label())).toList(),
-                5, 20, 10L * 1024 * 1024, 100L * 1024 * 1024, ai.isAvailable());
+                5, 20, 10L * 1024 * 1024, 100L * 1024 * 1024, available,
+                catalog.templates().stream().map(t -> new TemplateOption(t.id(), t.name(), t.hookType(),
+                        t.audioMode().toUpperCase(Locale.ROOT), t.music())).toList(),
+                catalog.music().stream().map(m -> new MusicOption(m.id(), m.name(), m.moods())).toList());
     }
 
     @Transactional
@@ -150,6 +155,14 @@ public class ShortformService {
             throw ApiException.badRequest("중복 없이 촬영 소스를 5~20개 선택해주세요.");
         var allowed = new HashSet<>(assets.findByProjectIdOrderByPositionAsc(id).stream().map(a -> a.id).toList());
         if (!allowed.containsAll(request.assetIds())) throw ApiException.badRequest("이 프로젝트에 등록된 촬영 소스만 사용할 수 있습니다.");
+        // 목록을 받아 왔으면 미리 확인한다. 못 받았으면 AI 서버가 제출 때 다시 확인한다.
+        if (request.templateId() != null || request.musicId() != null) {
+            var catalog = ai.catalog();
+            if (catalog.loaded() && request.templateId() != null && !catalog.hasTemplate(request.templateId()))
+                throw ApiException.badRequest("없는 템플릿입니다: " + request.templateId());
+            if (catalog.loaded() && request.musicId() != null && !catalog.hasMusic(request.musicId()))
+                throw ApiException.badRequest("없는 음악입니다: " + request.musicId());
+        }
         // 가입한 누구나 GPU와 유료 TTS를 쓰게 되므로 사용자별로 하루 제작 횟수를 제한한다.
         if (dailyRenderLimit > 0 && jobs.countCreatedByOwnerSince(project.ownerId,
                 Instant.now().minus(Duration.ofDays(1))) >= dailyRenderLimit) {

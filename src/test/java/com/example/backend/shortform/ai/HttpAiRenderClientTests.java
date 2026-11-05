@@ -256,6 +256,21 @@ class HttpAiRenderClientTests {
                 () -> adapter.getStoryboard("ai-job-1", null)).getCode());
     }
 
+    @Test void readsCatalogAndSkipsUnsafeIds() {
+        responseStatus.set(200);
+        responseBody.set("{\"templates\":[{\"id\":\"reel_a\",\"name\":\"A\",\"hook_type\":\"h\",\"audio_mode\":\"music\","
+                + "\"music\":\"song_1\"},{\"id\":\"../bad\",\"name\":\"B\"}],"
+                + "\"music\":[{\"id\":\"song_1\",\"name\":\"곡\",\"moods\":[\"잔잔함\"]}]}");
+        var catalog = configured().catalog();
+        assertEquals("/api/catalog", requestPath.get());
+        assertEquals(1, catalog.templates().size());
+        assertEquals("music", catalog.templates().getFirst().audioMode());
+        assertTrue(catalog.hasTemplate("reel_a"));
+        assertTrue(catalog.hasMusic("song_1"));
+        responseStatus.set(503);
+        assertFalse(client(true, baseUrl, "", 5, false).catalog().loaded());
+    }
+
     @Test void timesOutEvenWhenTheServerHasAlreadySentResponseHeaders() {
         responseStatus.set(200);
         bodyDelayMs.set(3000);

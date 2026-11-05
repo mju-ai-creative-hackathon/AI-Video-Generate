@@ -41,12 +41,15 @@ public interface AiRenderClient {
     /** 완성본. 호출한 쪽이 스트림을 닫는다. */
     default InputStream downloadVideo(String externalJobId) { throw unsupported(); }
 
+    /** 앱에 보여줄 템플릿과 음악 목록. AI 서버에 닿지 않으면 빈 목록이다. */
+    default Catalog catalog() { return Catalog.EMPTY; }
+
     private static AiRenderException unsupported() {
         return new AiRenderException("AI_NOT_CONFIGURED", false, "AI 영상 제작 서비스가 검토 기능을 지원하지 않습니다.");
     }
 
     record RenderSubmission(UUID jobId, UUID projectId, String title, String style, String styleLabel,
-                            String mood, String moodLabel, String musicId,
+                            String mood, String moodLabel, String musicId, String templateId,
                             List<Source> sources, List<ShootingHint> shootingHints) {
         public RenderSubmission {
             sources = List.copyOf(sources);
@@ -55,7 +58,7 @@ public interface AiRenderClient {
 
         public RenderSubmission(UUID jobId, UUID projectId, String style, String mood, String musicId,
                                 List<Source> sources, List<ShootingHint> shootingHints) {
-            this(jobId, projectId, null, style, null, mood, null, musicId, sources, shootingHints);
+            this(jobId, projectId, null, style, null, mood, null, musicId, null, sources, shootingHints);
         }
 
         public RenderSubmission(UUID jobId, UUID projectId, String style, String mood, String musicId,
@@ -65,8 +68,28 @@ public interface AiRenderClient {
 
         public RenderSubmission withTitleAndHints(String newTitle, List<ShootingHint> hints) {
             return new RenderSubmission(jobId, projectId, newTitle, style, styleLabel, mood, moodLabel, musicId,
-                    sources, hints);
+                    templateId, sources, hints);
         }
+    }
+
+    /** audioMode: narration(나레이션) 또는 music(음악만). music은 템플릿의 기본 음악 id. */
+    record TemplateInfo(String id, String name, String hookType, String audioMode, String music) {}
+
+    record MusicInfo(String id, String name, List<String> moods) {
+        public MusicInfo { moods = moods == null ? List.of() : List.copyOf(moods); }
+    }
+
+    record Catalog(List<TemplateInfo> templates, List<MusicInfo> music) {
+        public static final Catalog EMPTY = new Catalog(List.of(), List.of());
+
+        public Catalog {
+            templates = templates == null ? List.of() : List.copyOf(templates);
+            music = music == null ? List.of() : List.copyOf(music);
+        }
+
+        public boolean loaded() { return !templates.isEmpty(); }
+        public boolean hasTemplate(String id) { return templates.stream().anyMatch(t -> t.id().equals(id)); }
+        public boolean hasMusic(String id) { return music.stream().anyMatch(m -> m.id().equals(id)); }
     }
 
     record Source(UUID assetId, UUID missionId, int position, String contentType, Resource resource) {}
