@@ -179,6 +179,7 @@ iOS 앱은 이 서버를 직접 부르지 않고 Backend(`mju-ai-creative-hackat
 |---|---|---|
 | GET | `/health` | 제작 가능 여부 확인 |
 | GET | `/catalog` | 템플릿 목록(`audio_mode`, 기본 음악 포함)과 파일이 있는 음악 목록 |
+| GET | `/renders/{run_id}/thumbnail` | 완성본의 대표 이미지(JPEG, 1초 지점). 처음 요청 때 만들어 영상 옆에 저장한다 |
 | POST | `/renders` | `manifest`(JSON)와 `files`. `Idempotency-Key`(Backend 작업 UUID)의 32자 hex가 실행 ID다. 같은 키는 같은 실행을 돌려준다 |
 | GET | `/renders/{run_id}` | Backend 계약의 상태(`status`, `phase`, `busy`, 진행, `storyboardVersion`, `error`) |
 | GET | `/renders/{run_id}/video` | 완성본. Backend가 받아 보관한다 |

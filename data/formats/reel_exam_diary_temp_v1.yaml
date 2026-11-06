@@ -5,6 +5,10 @@
 # 재현하지 못한 것: 2초 미만 컷 8개(2초로 늘림), 화면 중앙의 시각 표시, 작은 보조 자막, 얼굴 스티커,
 #   영상 내내 고정된 날짜 표시(컷별 화면 문구로 대체), 컷 #12의 암전 전환, 실제 손떨림 촬영 느낌.
 # 원본의 공부·시험 내용은 사용자 요청에 따라 여행으로 바꿨다. 컷 수, 길이, 순서는 원본 구조 그대로다.
+# 사용자 요청에 따라 날짜(DAY 1~6) 대신 하루 안의 시간 단위로 바꿨다. 원본의 6일 구간을
+#   아침(07~09시) → 오전(10~11시) → 정오 → 오후(13~16시) → 저녁(17~19시) → 밤(20~23시)에 대응시켰다.
+# 화면 문구는 "07:30"처럼 24시간 형식의 시각만 쓴다. 제출자 메모에 시각이 있으면 그 시각을 쓰고,
+#   없으면 구간 안에서 순서에 맞는 대략적인 시각을 쓴다(정확한 촬영 시각은 알 수 없다).
 format_id: reel_exam_diary_temp_v1
 name: 일기
 hook_type: 상황 제시형
@@ -20,10 +24,10 @@ slots:
     shot_options:
       - {size: wide, move: static}
       - {size: medium, move: static}
-    narration: {goal: "어떤 기간을 기록한 영상인지 한 문장으로 알림", chars_per_sec: 5.5}
+    narration: {goal: "어떤 하루를 시간 순서로 기록한 영상인지 한 문장으로 알림", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #2
-  - slot: intro
+  - slot: morning_intro
     role: body
     sec: {min: 3.5, max: 5.0}
     photo_need:
@@ -32,10 +36,10 @@ slots:
     shot_options:
       - {size: medium, move: handheld}
       - {size: wide, move: handheld}
-    narration: {goal: "첫날의 상황과 앞으로 할 일을 가볍게 소개. 화면 문구는 DAY 1처럼 날짜 표시만", chars_per_sec: 5.5}
+    narration: {goal: "아침에 일어나 오늘 할 일을 가볍게 소개. 화면 문구는 07:00~09:00 사이 시각만(예: 07:30)", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #3, #4, #6: 손에 든 음료·물건을 짧게
-  - slot: day1_snack
+  - slot: morning_snack
     role: body
     repeat: {min: 1, max: 3}
     sec: {min: 2.0, max: 2.5}
@@ -45,10 +49,10 @@ slots:
     shot_options:
       - {size: close_up, move: handheld}
       - {size: detail, move: handheld}
-    narration: {goal: "여행 전에 챙긴 것을 짧게 말함. 화면 문구는 DAY 1", chars_per_sec: 5.5}
+    narration: {goal: "출발 전에 챙긴 것을 짧게 말함. 화면 문구는 07:00~09:00 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #5, #9: 계단·거울 앞 전신
-  - slot: day1_selfie
+  - slot: morning_selfie
     role: body
     required: false
     repeat: {min: 0, max: 2}
@@ -59,10 +63,10 @@ slots:
     shot_options:
       - {size: wide, move: static}
       - {size: wide, move: handheld}
-    narration: {goal: "지금 기분이나 다짐을 한마디. 화면 문구는 DAY 1", chars_per_sec: 5.5}
+    narration: {goal: "지금 기분이나 다짐을 한마디. 화면 문구는 07:00~09:00 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #7, #8, #10 자리: 첫 여행지
-  - slot: day1_spot
+  - slot: morning_spot
     role: body
     repeat: {min: 1, max: 3}
     sec: {min: 2.5, max: 3.0}
@@ -73,10 +77,10 @@ slots:
       - {size: wide, move: pan_right}
       - {size: medium, move: handheld}
       - {size: wide, move: slow_push_in}
-    narration: {goal: "처음 도착한 곳의 첫인상을 짧게. 화면 문구는 DAY 1", chars_per_sec: 5.5}
+    narration: {goal: "처음 도착한 곳의 첫인상을 짧게. 화면 문구는 08:00~09:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #11, #12
-  - slot: day2_break
+  - slot: late_morning_break
     role: body
     required: false
     repeat: {min: 0, max: 2}
@@ -87,10 +91,10 @@ slots:
     shot_options:
       - {size: medium, move: handheld}
       - {size: close_up, move: static}
-    narration: {goal: "둘째 날의 장소나 여행하며 지치는 마음을 솔직하게. 화면 문구는 DAY 2", chars_per_sec: 5.5}
+    narration: {goal: "오전 중 들른 곳이나 슬슬 지치는 마음을 솔직하게. 화면 문구는 10:00~11:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #13
-  - slot: day2_spot
+  - slot: late_morning_spot
     role: body
     required: false
     repeat: {min: 0, max: 1}
@@ -101,10 +105,10 @@ slots:
     shot_options:
       - {size: wide, move: static}
       - {size: medium, move: slow_push_in}
-    narration: {goal: "구경하다 눈길을 끈 것을 말함. 화면 문구는 DAY 2", chars_per_sec: 5.5}
+    narration: {goal: "구경하다 눈길을 끈 것을 말함. 화면 문구는 10:00~11:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #14
-  - slot: day3_spot
+  - slot: noon_spot
     role: body
     required: false
     repeat: {min: 0, max: 1}
@@ -115,10 +119,10 @@ slots:
     shot_options:
       - {size: wide, move: static}
       - {size: medium, move: slow_push_in}
-    narration: {goal: "셋째 날의 일정이나 컨디션을 한 문장으로. 화면 문구는 DAY 3", chars_per_sec: 5.5}
+    narration: {goal: "점심 무렵의 일정이나 컨디션을 한 문장으로. 화면 문구는 12:00~12:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #15
-  - slot: day4_spot
+  - slot: afternoon_spot
     role: body
     sec: {min: 3.5, max: 4.0}
     photo_need:
@@ -127,10 +131,10 @@ slots:
     shot_options:
       - {size: wide, move: handheld}
       - {size: medium, move: static}
-    narration: {goal: "다시 길을 나선 아침을 말함. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    narration: {goal: "점심 뒤 다시 길을 나선 순간을 말함. 화면 문구는 13:00~16:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #16
-  - slot: day4_snack
+  - slot: afternoon_snack
     role: body
     required: false
     repeat: {min: 0, max: 1}
@@ -140,10 +144,10 @@ slots:
       moods: []
     shot_options:
       - {size: close_up, move: handheld}
-    narration: {goal: "손에 든 음료를 보며 발걸음이 느려지는 이유를 농담처럼. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    narration: {goal: "손에 든 음료를 보며 발걸음이 느려지는 이유를 농담처럼. 화면 문구는 13:00~16:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #17, #18: 움직임이 큰 장난스러운 컷
-  - slot: day4_move
+  - slot: afternoon_move
     role: body
     required: false
     repeat: {min: 0, max: 2}
@@ -154,10 +158,10 @@ slots:
     shot_options:
       - {size: wide, move: handheld}
       - {size: medium, move: handheld}
-    narration: {goal: "자리를 옮기며 스스로에게 하는 장난스러운 한마디. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    narration: {goal: "자리를 옮기며 스스로에게 하는 장난스러운 한마디. 화면 문구는 13:00~16:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #19, #20
-  - slot: day4_view
+  - slot: afternoon_view
     role: body
     required: false
     repeat: {min: 0, max: 2}
@@ -168,10 +172,10 @@ slots:
     shot_options:
       - {size: wide, move: handheld}
       - {size: medium, move: static}
-    narration: {goal: "풍경을 보며 드는 생각을 짧게. 화면 문구는 DAY 4", chars_per_sec: 5.5}
+    narration: {goal: "풍경을 보며 드는 생각을 짧게. 화면 문구는 13:00~16:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #21, #22
-  - slot: day5_spot
+  - slot: evening_spot
     role: body
     required: false
     repeat: {min: 0, max: 2}
@@ -182,10 +186,10 @@ slots:
     shot_options:
       - {size: wide, move: static}
       - {size: wide, move: pan_left}
-    narration: {goal: "늦은 시간까지 이어진 여행을 짧게. 화면 문구는 DAY 5", chars_per_sec: 5.5}
+    narration: {goal: "해 질 무렵까지 이어진 여행을 짧게. 화면 문구는 17:00~19:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #23
-  - slot: day5_break
+  - slot: evening_break
     role: body
     required: false
     repeat: {min: 0, max: 1}
@@ -196,10 +200,10 @@ slots:
     shot_options:
       - {size: close_up, move: pan_right}
       - {size: medium, move: slow_push_in}
-    narration: {goal: "다음 일정을 기대하며 힘을 내는 마음. 화면 문구는 DAY 5", chars_per_sec: 5.5}
+    narration: {goal: "저녁 일정을 기대하며 힘을 내는 마음. 화면 문구는 17:00~19:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
-  # 원본 #24~#27 자리: 마지막 날의 일정을 잇는 컷
-  - slot: day6_spot
+  # 원본 #24~#27 자리: 밤 일정을 잇는 컷
+  - slot: night_spot
     role: body
     repeat: {min: 1, max: 4}
     sec: {min: 2.2, max: 4.2}
@@ -209,10 +213,10 @@ slots:
     shot_options:
       - {size: wide, move: handheld}
       - {size: medium, move: handheld}
-    narration: {goal: "여행 마지막 날의 일정을 차례로 전함. 화면 문구는 DAY 6", chars_per_sec: 5.5}
+    narration: {goal: "밤 일정을 차례로 전함. 화면 문구는 20:00~22:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #28: 끝난 뒤의 보상
-  - slot: day6_relief
+  - slot: night_relief
     role: body
     sec: {min: 3.5, max: 4.2}
     photo_need:
@@ -221,10 +225,10 @@ slots:
     shot_options:
       - {size: close_up, move: slow_push_in}
       - {size: detail, move: handheld}
-    narration: {goal: "여행을 마무리하며 먹은 것을 말함. 화면 문구는 DAY 6", chars_per_sec: 5.5}
+    narration: {goal: "하루를 마무리하며 먹은 것을 말함. 화면 문구는 20:00~22:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
   # 원본 #29
-  - slot: day6_fun
+  - slot: night_fun
     role: body
     required: false
     repeat: {min: 0, max: 1}
@@ -235,9 +239,9 @@ slots:
     shot_options:
       - {size: medium, move: static}
       - {size: wide, move: handheld}
-    narration: {goal: "그날 밤 즐긴 것으로 여행의 아쉬움과 즐거움을 표현. 화면 문구는 DAY 6", chars_per_sec: 5.5}
+    narration: {goal: "그날 밤 즐긴 것으로 하루의 아쉬움과 즐거움을 표현. 화면 문구는 21:00~23:59 사이 시각만", chars_per_sec: 5.5}
     text: {use: required, position: top}
-  # 원본 #30: 날짜 표시 없이 인사
+  # 원본 #30: 시각 표시 없이 인사
   - slot: ending
     role: ending
     sec: {min: 3.5, max: 4.0}
@@ -247,5 +251,5 @@ slots:
     shot_options:
       - {size: medium, move: static}
       - {size: wide, move: static}
-    narration: {goal: "기간을 돌아보며 다음을 기약하는 인사", chars_per_sec: 5.5}
+    narration: {goal: "하루를 돌아보며 다음을 기약하는 인사", chars_per_sec: 5.5}
     text: {use: none, position: top}

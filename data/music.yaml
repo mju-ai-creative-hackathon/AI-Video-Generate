@@ -11,4 +11,12 @@
 #     license: "OO 라이선스, 상업적 이용 가능, 출처 표기 불필요 (확인: 홍길동, 2026-11-06)"
 #     moods: [잔잔함, 따뜻함]
 #     bpm: 96
-tracks: []
+tracks:
+  # 시연 전용. 사용 허가를 받지 않은 곡이다. 공개 배포(앱 출시, SNS 게시) 전에 반드시 교체한다.
+  - id: roi_instrumental_demo
+    name: "Roi (Instrumental) [시연용]"
+    file: assets/music/roi_instrumental_demo.m4a
+    license: >-
+      미허가. instagram.com/reels/DT6pagyDx9K 의 배경 음악을 사용자 요청으로 추출(2026-11-06).
+      해커톤 내부 시연 전용, 공개 배포 금지, 공개 전 교체 필요. 원본 24.2초 구간이라 긴 영상에서는 반복된다.
+    moods: [잔잔함, 설렘]

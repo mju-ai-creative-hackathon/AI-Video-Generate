@@ -6,7 +6,8 @@
 #   → 바다 전망 명소 → 다시 창밖으로 끝(첫 이동 컷과 짝을 이룸).
 # 원본은 첫 컷에만 큰 제목(수식어 / 영문 지명 / 부제 3줄)이 있고 나머지는 화면 문구가 없다.
 # 음악 전용(audio.mode: music): 나레이션과 TTS 없이 음악만 넣고, 컷 길이는 아래 sec를 그대로 따른다.
-#   기본 음악은 비워 뒀다. data/music.yaml에 곡을 등록한 뒤 music에 id를 적거나, 제작 요청에서 고른다.
+#   기본 음악은 참고 영상의 곡(roi_instrumental_demo)이다. 사용 허가가 없는 시연 전용 곡이므로
+#   공개 배포 전에 허가받은 곡으로 바꿔야 한다(data/music.yaml).
 # 재현하지 못한 것:
 #   - 음악 박자에 맞춘 컷 전환: 컷 길이를 원본과 비슷하게 맞췄을 뿐 박자를 분석하지는 않는다.
 #   - 제목의 3줄 손글씨 스타일과 색: 화면 문구 한 줄로 대체.
@@ -18,7 +19,7 @@ hook_type: 장소 제시형
 total_sec: {min: 5, max: 40}
 audio:
   mode: music
-  music: null
+  music: roi_instrumental_demo  # 시연 전용
 slots:
   # 원본 #1: 바다로 이어지는 거리 위에 큰 제목
   - slot: hook

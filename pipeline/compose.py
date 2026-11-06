@@ -348,14 +348,16 @@ class FFmpegComposer:
 def _cut_inputs(cut: ComposeCut, duration: float) -> list[str]:
     """입력 0은 영상, 입력 1은 나레이션 또는 무음이다. _audio_graph의 번호와 맞춰야 한다."""
     clip = str(cut.clip_path.resolve())
+    silence = ["-f", "lavfi", "-t", f"{duration:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
     if not cut.is_source:
-        assert cut.audio_path is not None
+        if cut.audio_path is None:  # 음악 전용 템플릿: 컷 소리는 무음, 음악은 최종 합성에서 얹는다
+            return ["-i", clip, *silence]
         return ["-i", clip, "-i", str(cut.audio_path.resolve())]
     video = ["-ss", f"{cut.source_start:.3f}", "-t", f"{duration:.3f}", "-i", clip]
     if cut.audio_path is not None and cut.audio_mode != "source":
         return [*video, "-i", str(cut.audio_path.resolve())]
     # 원본 소리를 쓸 때도 입력 번호를 맞추려고 무음을 넣는다.
-    return [*video, "-f", "lavfi", "-t", f"{duration:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
+    return [*video, *silence]
 
 
 def make_contact_sheet(clips: list[Any], out_path: Path, thumb_h: int = 480) -> Path:

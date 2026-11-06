@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -30,6 +31,7 @@ from ..db.models import (
 )
 from ..db.repo import Repo, session_scope
 from ..errors import NotFoundError
+from ..media import extract_frame
 from ..jobs import KIND_PLAN, KIND_REGEN_CLIP, KIND_RENDER, JobQueue, counter_of
 from .models import FormatOption, MusicOption, SubmitItem
 from .routes import PREFIX, check_choices, create_mission_run, format_options, music_options
@@ -269,9 +271,7 @@ def get_render(run_id: str, request: Request) -> BridgeStatus:
         return bridge_status(Repo(session), run_id)
 
 
-@router.get("/renders/{run_id}/video")
-def get_render_video(run_id: str, request: Request) -> FileResponse:
-    ctx = _ctx(request)
+def _latest_video_path(ctx: App, run_id: str) -> Path:
     with session_scope(ctx.factory) as session:
         video = Repo(session).latest_video(run_id)
         if video is None:
@@ -279,4 +279,23 @@ def get_render_video(run_id: str, request: Request) -> FileResponse:
         path = ctx.settings.resolve(video.path)
     if not path.is_file():
         raise NotFoundError("완성본 파일을 찾을 수 없습니다.")
-    return FileResponse(path, media_type="video/mp4")
+    return path
+
+
+@router.get("/renders/{run_id}/video")
+def get_render_video(run_id: str, request: Request) -> FileResponse:
+    return FileResponse(_latest_video_path(_ctx(request), run_id), media_type="video/mp4")
+
+
+# 썸네일 시각. 첫 컷(제목이 있는 hook)이 보이도록 앞쪽에서 뽑는다.
+THUMBNAIL_AT_SEC = 1.0
+
+
+@router.get("/renders/{run_id}/thumbnail")
+def get_render_thumbnail(run_id: str, request: Request) -> FileResponse:
+    """완성본의 대표 이미지(JPEG). 처음 요청할 때 만들고, 영상이 바뀌면 다시 만든다."""
+    video = _latest_video_path(_ctx(request), run_id)
+    thumb = video.with_suffix(".thumb.jpg")
+    if not thumb.exists() or thumb.stat().st_mtime < video.stat().st_mtime:
+        extract_frame(video, THUMBNAIL_AT_SEC, thumb)
+    return FileResponse(thumb, media_type="image/jpeg")

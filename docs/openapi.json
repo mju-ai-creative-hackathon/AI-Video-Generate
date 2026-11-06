@@ -228,6 +228,55 @@
         }
       }
     },
+    "/api/v1/renders/{run_id}/thumbnail": {
+      "get": {
+        "tags": [
+          "backend"
+        ],
+        "summary": "Get Render Thumbnail",
+        "description": "완성본의 대표 이미지(JPEG). 처음 요청할 때 만들고, 영상이 바뀌면 다시 만든다.",
+        "operationId": "get_render_thumbnail_api_v1_renders__run_id__thumbnail_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/options": {
       "get": {
         "tags": [
