@@ -17,6 +17,15 @@ public final class CommunityDtos {
             @Positive Long courseId
     ) {}
 
+    /** null인 항목은 바꾸지 않는다. removeCourse=true면 연결한 코스를 뗀다. */
+    public record UpdateRequest(
+            @Size(max = 100) String title,
+            @Size(max = 3000) String caption,
+            @Size(max = 10) List<@NotBlank @Size(max = 30) String> tags,
+            @Positive Long courseId,
+            Boolean removeCourse
+    ) {}
+
     public record Author(UUID id, String name, String profileImageUrl) {}
 
     public record MediaView(UUID id, MediaKind kind, String contentType, long sizeBytes, String url) {}
