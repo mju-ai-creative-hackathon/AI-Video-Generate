@@ -89,7 +89,7 @@ class PresetCourseSeederIntegrationTests extends PostgresIntegrationTest {
                 original.totalMinutes() + 10, 99000, 7, original.stops(), List.of(
                 new PresetMission(1, "VIDEO", "새 영상 미션", "새 가이드", 6),
                 new PresetMission(1, "photo", "새 사진 미션", "사진 가이드", null),
-                new PresetMission(2, "VIDEO", "두번째 장소 영상", "가이드", 4)));
+                new PresetMission(2, "VIDEO", "두번째 장소 영상", "가이드", 4)), List.of());
         List<PresetCourse> next = new ArrayList<>(fixture);
         next.set(0, changed);
 
@@ -116,6 +116,27 @@ class PresetCourseSeederIntegrationTests extends PostgresIntegrationTest {
     }
 
     @Test
+    void renamedPresetTakesOverTheCourseWithItsFormerTitle() throws Exception {
+        List<PresetCourse> fixture = fixture();
+        seeder.sync(fixture);
+        PresetCourse original = fixture.get(0);
+        Long courseId = idOf(original.title());
+
+        List<PresetCourse> next = new ArrayList<>(fixture);
+        next.set(0, new PresetCourse("새 제목 코스", original.summary(), "새 지역",
+                original.totalMinutes(), original.estimatedCost(), original.displayOrder(), original.stops(),
+                original.missions(), List.of("없는 제목", original.title())));
+
+        SyncResult result = seeder.sync(next);
+
+        assertThat(result.inserted()).isZero();
+        assertThat(presetCount()).isEqualTo(fixture.size());
+        assertThat(idOf("새 제목 코스")).isEqualTo(courseId);
+        tx.executeWithoutResult(s -> assertThat(courseRepository.findById(courseId).orElseThrow().getRegion())
+                .isEqualTo("새 지역"));
+    }
+
+    @Test
     void changedStopsAreReplacedAndUnknownPresetsAreKept() throws Exception {
         List<PresetCourse> fixture = fixture();
         seeder.sync(fixture);
@@ -133,7 +154,7 @@ class PresetCourseSeederIntegrationTests extends PostgresIntegrationTest {
         List<PresetCourse> next = new ArrayList<>(fixture);
         next.set(0, new PresetCourse(original.title(), original.summary(), original.region(),
                 original.totalMinutes(), original.estimatedCost(), original.displayOrder(), stops,
-                original.missions()));
+                original.missions(), List.of()));
 
         seeder.sync(next);
 

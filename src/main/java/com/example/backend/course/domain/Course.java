@@ -191,6 +191,10 @@ public class Course {
         this.displayOrder = displayOrder;
     }
 
+    public void renamePreset(String title) {
+        this.title = title;
+    }
+
     /** 장소를 모두 지운다(orphanRemoval 로 DB 에서도 삭제). */
     public void clearStops() {
         stops.clear();
