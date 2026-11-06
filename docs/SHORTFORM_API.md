@@ -48,6 +48,30 @@
 | POST | `/{projectId}/renders/{renderId}/approve` | 승인하고 영상 생성 시작 |
 | GET | `/{projectId}/renders/{renderId}/media/{photoId}[/poster]` | 서명 URL. 검토용 원본·대표 이미지 |
 | GET | `/{projectId}/renders/{renderId}/video` | 서명 URL. 완성본(탐색 지원) |
+| GET | `/{projectId}/renders/{renderId}/thumbnail` | 서명 URL. 완성본 대표 이미지(JPEG) |
+| GET | `/videos?page=0&size=20` | 내가 만든 완성 영상 목록(마이 화면) |
+
+### 내가 만든 숏폼 (마이 화면)
+
+```http
+GET /api/shortforms/videos?page=0&size=20
+Authorization: Bearer <accessToken>
+```
+
+```json
+{"items":[{"renderId":"RENDER_UUID","projectId":"PROJECT_UUID","title":"서울의 하루",
+  "videoUrl":"https://.../renders/RENDER_UUID/video?expires=...&sig=...",
+  "thumbnailUrl":"https://.../renders/RENDER_UUID/thumbnail?expires=...&sig=...",
+  "templateId":"reel_mood_trip_temp_v1","style":"VLOG","mood":"CALM",
+  "createdAt":"2026-11-06T00:00:00Z","completedAt":"2026-11-06T00:20:00Z"}],
+ "page":0,"size":20,"totalElements":1,"totalPages":1,"hasNext":false}
+```
+
+- 본인 계정의 **완성(`SUCCEEDED`) 영상만** 최근에 완성된 순서로 나옵니다. 커뮤니티에 올리지 않아도 나오고,
+  서버에 있으므로 앱을 다시 설치하거나 다른 기기에서 로그인해도 같습니다.
+- `videoUrl`, `thumbnailUrl`은 서명 URL입니다(1시간). 만료되면 목록을 다시 조회합니다.
+- `thumbnailUrl`은 첫 컷(제목이 있는 화면) 근처 프레임이며, 받지 못한 영상은 `null`입니다.
+- 화면에서 항목을 누르면 `videoUrl`을 바로 재생하거나, 상세가 필요하면 `GET /{projectId}/renders/{renderId}`를 부릅니다.
 
 ### 프로젝트 생성
 
@@ -267,6 +291,7 @@ AI 생성 요청에 OpenAI API를 직접 호출하지 않습니다.
 | POST | `/renders` | 워커: 소스 제출, 초안 생성 시작 |
 | GET | `/renders/{jobId}` | 워커: 상태 조회(검토 중 포함) |
 | GET | `/renders/{jobId}/video` | 워커: 완성본 내려받기 |
+| GET | `/renders/{jobId}/thumbnail` | 워커: 대표 이미지 내려받기(실패해도 완성 처리) |
 | GET, PUT | `/runs/{jobId}/storyboard` | 검토 API 전달 |
 | POST | `/runs/{jobId}/storyboard/regen` | 검토 API 전달 |
 | POST | `/runs/{jobId}/approve`, `/runs/{jobId}/render` | 승인 API 전달 |

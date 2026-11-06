@@ -64,6 +64,9 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
     private static final List<String> RUN_CALLS = new CopyOnWriteArrayList<>();
     /** MediaStorage가 MP4로 인식하는 최소 헤더(ftyp isom) + 본문. */
     private static final byte[] RESULT_MP4 = mp4();
+    /** MediaStorage가 JPEG로 인식하는 최소 바이트(SOI + APP0 + EOI). */
+    private static final byte[] RESULT_JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 16,
+            'J', 'F', 'I', 'F', 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, (byte) 0xFF, (byte) 0xD9};
     private static final HttpServer AI = createServer();
     private static final long HINTED_COURSE = 777L;
     private static final List<List<Object>> HINT_CALLS = new CopyOnWriteArrayList<>();
@@ -119,6 +122,12 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
                     IDEMPOTENCY_KEYS.add(key == null ? "" : key);
                     responseCode = SUBMIT_CODE.get();
                     body = responseCode == 200 ? "{\"jobId\":\"ai-" + key + "\"}" : "{\"message\":\"temporary failure\"}";
+                } else if (exchange.getRequestURI().getPath().endsWith("/thumbnail")) {
+                    exchange.getResponseHeaders().set("Content-Type", "image/jpeg");
+                    exchange.sendResponseHeaders(200, RESULT_JPEG.length);
+                    exchange.getResponseBody().write(RESULT_JPEG);
+                    exchange.close();
+                    return;
                 } else if (exchange.getRequestURI().getPath().endsWith("/video")) {
                     exchange.getResponseHeaders().set("Content-Type", "video/mp4");
                     exchange.sendResponseHeaders(200, RESULT_MP4.length);
@@ -468,6 +477,20 @@ class ShortformApiIntegrationTests extends PostgresIntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray();
         assertThat(video).isEqualTo(RESULT_MP4);
         mvc.perform(get(base + "/video")).andExpect(status().isUnauthorized());
+
+        // 썸네일도 받아 보관하고, 마이 화면 목록에 완성 영상이 나온다(커뮤니티 게시와 무관).
+        String thumbnailUrl = done.get("thumbnailUrl").asText();
+        assertThat(thumbnailUrl).contains(base + "/thumbnail?expires=");
+        assertThat(mvc.perform(get(thumbnailUrl)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray()).isEqualTo(RESULT_JPEG);
+        JsonNode mine = mapper.readTree(mvc.perform(get("/api/shortforms/videos").header("Authorization", owner))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(mine.get("items").get(0).get("renderId").asText()).isEqualTo(renderId);
+        assertThat(mine.get("items").get(0).get("title").asText()).isEqualTo("서울의 하루");
+        assertThat(mine.get("items").get(0).get("videoUrl").asText()).contains(base + "/video?expires=");
+        JsonNode others = mapper.readTree(mvc.perform(get("/api/shortforms/videos").header("Authorization", other))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(others.get("items").size()).isZero();
     }
 
     @Test

@@ -11,6 +11,14 @@ public interface RenderJobRepository extends JpaRepository<RenderJob, UUID> {
     boolean existsByProjectId(UUID projectId);
     boolean existsByProjectIdAndStatusIn(UUID projectId, Collection<RenderStatus> statuses);
     List<RenderJob> findTop20ByStatusInAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc(Collection<RenderStatus> statuses, Instant now);
+    /** 사용자가 만든 완성 영상. 최근에 완성된 순서. */
+    @Query(value = "select j from RenderJob j where j.status = :status"
+            + " and j.projectId in (select p.id from ShortformProject p where p.ownerId = :ownerId)"
+            + " order by j.updatedAt desc, j.id desc",
+            countQuery = "select count(j) from RenderJob j where j.status = :status"
+            + " and j.projectId in (select p.id from ShortformProject p where p.ownerId = :ownerId)")
+    org.springframework.data.domain.Page<RenderJob> findByOwnerAndStatus(
+            UUID ownerId, RenderStatus status, org.springframework.data.domain.Pageable pageable);
     /** 사용자별 하루 제작 횟수 제한용. */
     @Query("select count(j) from RenderJob j where j.createdAt >= :since"
             + " and j.projectId in (select p.id from ShortformProject p where p.ownerId = :ownerId)")

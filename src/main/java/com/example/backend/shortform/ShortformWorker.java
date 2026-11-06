@@ -17,6 +17,7 @@ public class ShortformWorker {
     private static final Logger log = LoggerFactory.getLogger(ShortformWorker.class);
     /** 완성본 상한. 1080x1920 숏폼 1분이 수십 MB이므로 넉넉히 둔다. */
     private static final long MAX_RESULT_BYTES = 1024L * 1024 * 1024;
+    private static final long MAX_THUMBNAIL_BYTES = 10L * 1024 * 1024;
     private final RenderStateService state;
     private final AiRenderClient ai;
     private final MediaStorage storage;
@@ -65,8 +66,20 @@ public class ShortformWorker {
         } catch (IOException error) {
             throw new AiRenderException("AI_UNAVAILABLE", true, "완성본을 내려받지 못했습니다.");
         }
-        if (!state.completed(claim, key, result)) {
+        String thumbnail = storeThumbnail(claim.externalJobId());
+        if (!state.completed(claim, key, thumbnail, result)) {
             try { storage.delete(key); } catch (RuntimeException ignored) { }
+            if (thumbnail != null) try { storage.delete(thumbnail); } catch (RuntimeException ignored) { }
+        }
+    }
+
+    /** 썸네일은 보조 정보다. 받지 못해도 완성 처리를 막지 않는다. */
+    private String storeThumbnail(String externalJobId) {
+        try (InputStream image = ai.downloadThumbnail(externalJobId)) {
+            return storage.storeGenerated(image, MAX_THUMBNAIL_BYTES, "jpg").storageKey();
+        } catch (RuntimeException | IOException error) {
+            log.warn("Shortform thumbnail unavailable ({}); completing without it.", error.getClass().getSimpleName());
+            return null;
         }
     }
 }

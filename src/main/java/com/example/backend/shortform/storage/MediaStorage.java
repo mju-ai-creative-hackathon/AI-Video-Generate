@@ -96,12 +96,17 @@ public class MediaStorage {
      * 별도 상한을 쓴다. 스트림은 호출한 쪽이 닫는다.
      */
     public StoredMedia storeGenerated(InputStream input, long maximum) {
+        return storeGenerated(input, maximum, "mp4");
+    }
+
+    /** 생성물 저장. extension은 기대하는 형식(mp4 완성본, jpg 썸네일)이며 내용이 다르면 거부한다. */
+    public StoredMedia storeGenerated(InputStream input, long maximum, String extension) {
         Path destination = null;
         boolean created = false;
         try {
             byte[] header = input.readNBytes(HEADER_BYTES);
             Format format = detect(header);
-            if (!format.extension().equals("mp4")) throw unsupported();
+            if (!format.extension().equals(extension)) throw unsupported();
             String key = UUID.randomUUID() + "." + format.extension();
             destination = resolve(key);
             long total = header.length;
@@ -117,7 +122,7 @@ public class MediaStorage {
                     output.write(buffer, 0, read);
                 }
             }
-            return new StoredMedia(key, "shortform.mp4", format.contentType(), total, format.kind());
+            return new StoredMedia(key, "shortform." + format.extension(), format.contentType(), total, format.kind());
         } catch (ApiException exception) {
             cleanPartial(created ? destination : null);
             throw exception;

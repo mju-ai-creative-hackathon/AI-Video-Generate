@@ -121,6 +121,23 @@ public class ShortformController {
                 .body(service.resultVideo(id, renderId, expires, sig));
     }
 
+    @GetMapping("/{id}/renders/{renderId}/thumbnail")
+    public ResponseEntity<Resource> thumbnail(@PathVariable UUID id, @PathVariable UUID renderId,
+                                              @RequestParam(required = false) Long expires,
+                                              @RequestParam(required = false) String sig) {
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePrivate())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(service.resultThumbnail(id, renderId, expires, sig));
+    }
+
+    /** 내가 만든 완성 영상(마이 화면). /{id}보다 구체적인 경로라 먼저 매칭된다. */
+    @GetMapping("/videos")
+    public VideoPage myVideos(@RequestHeader(value = "Authorization", required = false) String authorization,
+                              @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return service.myVideos(authorization, page, size);
+    }
+
     private static ResponseEntity<StreamingResponseBody> stream(AiRenderClient.MediaStream media) {
         var builder = ResponseEntity.status(media.status())
                 .contentType(MediaType.parseMediaType(media.contentType()))

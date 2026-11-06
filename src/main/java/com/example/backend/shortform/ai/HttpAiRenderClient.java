@@ -342,6 +342,18 @@ public class HttpAiRenderClient implements AiRenderClient {
         return value != null && value.isString() ? value.asString() : null;
     }
 
+    @Override
+    public InputStream downloadThumbnail(String externalJobId) {
+        requireConfigured();
+        requireJobId(externalJobId);
+        HttpResponse<InputStream> response = sendStreaming(
+                requestBuilder("/renders/" + externalJobId + "/thumbnail", requestTimeout)
+                        .setHeader("Accept", "image/jpeg").GET().build());
+        if (response.statusCode() == 200) return response.body();
+        closeQuietly(response.body());
+        throw failureFor(response.statusCode());
+    }
+
     private HttpRequest.Builder jsonRequest(String path, byte[] json) {
         if (json == null || json.length > MAX_STORYBOARD_BYTES) {
             throw new AiRenderException("AI_INVALID_REQUEST", false, "요청 본문이 너무 큽니다.");

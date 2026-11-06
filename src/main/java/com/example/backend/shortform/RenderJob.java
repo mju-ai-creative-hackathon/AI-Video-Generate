@@ -42,6 +42,8 @@ public class RenderJob {
     Instant deadlineAt;
     /** 백엔드가 받아 보관한 완성본의 저장소 키. */
     @Column(length = 100) String resultStorageKey;
+    /** 완성본 대표 이미지(JPEG)의 저장소 키. 받지 못했으면 null. */
+    @Column(length = 100) String resultThumbnailKey;
     UUID leaseToken;
     @Column(name = "next_attempt_at", nullable = false) Instant nextAttemptAt;
     @Column(nullable = false, updatable = false) Instant createdAt;

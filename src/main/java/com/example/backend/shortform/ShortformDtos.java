@@ -44,16 +44,22 @@ public final class ShortformDtos {
                              String errorMessage, Instant createdAt, Instant updatedAt,
                              RenderPhase phase, boolean reviewBusy, Progress progress,
                              Integer storyboardVersion, String reviewError, String templateId) {
-        static RenderView from(RenderJob job, String videoUrl) {
+        static RenderView from(RenderJob job, String videoUrl, String thumbnailUrl) {
             Progress progress = job.progressStage == null && job.progressMessage == null ? null
                     : new Progress(job.progressStage, job.progressMessage, job.progressCurrent, job.progressTotal);
             return new RenderView(job.id, job.projectId, job.status, job.style, job.mood, job.musicId,
-                    videoUrl, job.thumbnailUrl, job.errorCode, job.errorMessage, job.createdAt, job.updatedAt,
+                    videoUrl, thumbnailUrl, job.errorCode, job.errorMessage, job.createdAt, job.updatedAt,
                     job.phase, Boolean.TRUE.equals(job.reviewBusy), progress, job.storyboardVersion,
                     job.reviewError, job.templateId);
         }
     }
     public record Progress(String stage, String message, Integer current, Integer total) {}
+    /** 마이 화면의 "내가 만든 숏폼" 항목. 완성된 제작만 담는다. URL은 서명돼 있어 헤더 없이 쓴다. */
+    public record VideoItem(UUID renderId, UUID projectId, String title, String videoUrl, String thumbnailUrl,
+                            String templateId, VideoStyle style, VideoMood mood, Instant createdAt,
+                            Instant completedAt) {}
+    public record VideoPage(List<VideoItem> items, int page, int size, long totalElements, int totalPages,
+                            boolean hasNext) {}
     public record ApproveRequest(@NotNull @Positive Integer version, Boolean acceptWarnings) {}
     public record ProjectView(UUID id, String title, List<AssetView> assets, RenderView latestRender, Instant createdAt,
                               Long courseId, List<Long> missionIds) {}

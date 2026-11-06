@@ -245,16 +245,47 @@ public class ShortformService {
         return storage.load(job.resultStorageKey);
     }
 
+    public Resource resultThumbnail(UUID id, UUID renderId, Long expires, String sig) {
+        requireSignature(thumbnailPath(id, renderId), expires, sig);
+        var job = ownedJob(id, renderId);
+        if (job.resultThumbnailKey == null) throw ApiException.notFound("썸네일이 없습니다.");
+        return storage.load(job.resultThumbnailKey);
+    }
+
+    /** 내가 만든 완성 영상 목록. 커뮤니티에 올리지 않아도, 앱을 다시 설치해도 나온다. */
+    public VideoPage myVideos(String authorization, int page, int size) {
+        UUID ownerId = owner(authorization);
+        if (page < 0 || page > 10000 || size < 1 || size > 50) throw ApiException.badRequest("페이지 범위를 확인해주세요.");
+        var result = jobs.findByOwnerAndStatus(ownerId, RenderStatus.SUCCEEDED, PageRequest.of(page, size));
+        var titles = new HashMap<UUID, String>();
+        projects.findAllById(result.getContent().stream().map(j -> j.projectId).distinct().toList())
+                .forEach(p -> titles.put(p.id, p.title));
+        var items = result.getContent().stream().map(job -> {
+            var view = renderView(job);
+            return new VideoItem(job.id, job.projectId, titles.get(job.projectId), view.videoUrl(),
+                    view.thumbnailUrl(), job.templateId, job.style, job.mood, job.createdAt, job.updatedAt);
+        }).toList();
+        return new VideoPage(items, page, size, result.getTotalElements(), result.getTotalPages(), result.hasNext());
+    }
+
     // ── 내부 ─────────────────────────────────────────────────────────────────
 
     private RenderView renderView(RenderJob job) {
         String videoUrl = job.videoUrl;
-        if (job.resultStorageKey != null && signer != null) videoUrl = signer.sign(videoPath(job.projectId, job.id));
-        return RenderView.from(job, videoUrl);
+        String thumbnailUrl = job.thumbnailUrl;
+        if (signer != null) {
+            if (job.resultStorageKey != null) videoUrl = signer.sign(videoPath(job.projectId, job.id));
+            if (job.resultThumbnailKey != null) thumbnailUrl = signer.sign(thumbnailPath(job.projectId, job.id));
+        }
+        return RenderView.from(job, videoUrl, thumbnailUrl);
     }
 
     private static String videoPath(UUID projectId, UUID renderId) {
         return "/api/shortforms/" + projectId + "/renders/" + renderId + "/video";
+    }
+
+    private static String thumbnailPath(UUID projectId, UUID renderId) {
+        return "/api/shortforms/" + projectId + "/renders/" + renderId + "/thumbnail";
     }
 
     private void requireSignature(String path, Long expires, String sig) {

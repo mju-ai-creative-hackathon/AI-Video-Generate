@@ -41,6 +41,9 @@ public interface AiRenderClient {
     /** 완성본. 호출한 쪽이 스트림을 닫는다. */
     default InputStream downloadVideo(String externalJobId) { throw unsupported(); }
 
+    /** 완성본의 대표 이미지(JPEG). 호출한 쪽이 스트림을 닫는다. */
+    default InputStream downloadThumbnail(String externalJobId) { throw unsupported(); }
+
     /** 앱에 보여줄 템플릿과 음악 목록. AI 서버에 닿지 않으면 빈 목록이다. */
     default Catalog catalog() { return Catalog.EMPTY; }
 

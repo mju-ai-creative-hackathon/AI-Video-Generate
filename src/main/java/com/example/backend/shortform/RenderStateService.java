@@ -180,10 +180,17 @@ public class RenderStateService {
     /** 완성본을 저장소에 받아 둔 뒤 성공 처리한다. 임대를 잃었으면 false(호출한 쪽이 파일을 지운다). */
     @Transactional
     public boolean completed(Claim claim, String resultStorageKey, AiRenderClient.RenderResult result) {
+        return completed(claim, resultStorageKey, null, result);
+    }
+
+    @Transactional
+    public boolean completed(Claim claim, String resultStorageKey, String thumbnailKey,
+                             AiRenderClient.RenderResult result) {
         var job = leased(claim);
         if (job == null) return false;
         job.status = RenderStatus.SUCCEEDED; job.phase = RenderPhase.DONE;
         job.resultStorageKey = resultStorageKey;
+        job.resultThumbnailKey = thumbnailKey;
         job.reviewBusy = false; job.reviewError = null;
         job.setProgress(null, null, null, null);
         if (result.storyboardVersion() != null) job.storyboardVersion = result.storyboardVersion();
