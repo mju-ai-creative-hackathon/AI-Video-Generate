@@ -24,10 +24,10 @@ public class CommunityPost {
     String caption;
 
     /** Snapshot link without an FK so author withdrawal cannot block cleanup. */
-    @Column(name = "course_id", updatable = false)
+    @Column(name = "course_id")
     Long courseId;
 
-    @Column(name = "course_title", length = 100, updatable = false)
+    @Column(name = "course_title", length = 100)
     String courseTitle;
 
     @Column(name = "created_at", nullable = false, updatable = false)

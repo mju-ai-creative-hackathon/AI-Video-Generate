@@ -15,6 +15,7 @@
 | GET | `/{id}` | 게시물 상세 |
 | POST | `/{id}/import` | 게시물 코스를 내 일정으로 가져와 바로 시작 |
 | GET | `/{id}/media/{mediaId}` | 공개된 게시물의 원본 미디어 |
+| PATCH | `/{id}` | 작성자 본인 게시물 수정(제목·본문·태그·연결 코스) |
 | DELETE | `/{id}` | 작성자 본인 게시물 삭제 |
 
 ## 게시물 등록
@@ -49,6 +50,28 @@ curl -X POST http://localhost:8080/api/community/posts \
 `author`는 공개 프로필인 `id`, `name`, `profileImageUrl`만 제공하며 이메일은 노출하지 않습니다.
 각 `media`는 `id`, `kind`, `contentType`, `sizeBytes`, `url`을 포함합니다.
 미디어 URL은 이 백엔드의 상대 경로이므로 프론트의 API 기본 주소를 붙여 사용합니다.
+
+## 관련 코스 보기
+
+게시물 응답의 `course`가 `{"id": 5, "title": "..."}`이면 연결된 코스가 있는 것입니다.
+릴스 상세의 "관련 코스 확인하기" 버튼은 `GET /api/courses/{course.id}`로 코스 상세를 띄웁니다.
+`course`가 `null`이면 버튼을 숨깁니다.
+
+## 게시물 수정
+
+```http
+PATCH /api/community/posts/{postId}
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+
+{"title":"바뀐 제목","tags":["노을","서대문"],"courseId":5}
+```
+
+보낸 항목만 바꾸고 빠진 항목(`null`)은 그대로 둡니다. `tags`를 보내면 목록 전체를 교체합니다.
+`courseId`는 등록 때와 같이 프리셋 코스 또는 본인 소유 코스만 연결할 수 있습니다.
+연결을 떼려면 `{"removeCourse":true}`를 보내고, `courseId`와 함께 보내면 400입니다.
+작성자 본인만 수정할 수 있으며 다른 사람의 게시물이면 404, 로그인이 없으면 401입니다.
+영상과 커버는 바꿀 수 없습니다.
 
 ## 커뮤니티 코스를 내 일정으로 시작
 

@@ -89,6 +89,9 @@ public class PresetCourseSeeder implements ApplicationRunner {
         for (PresetCourse preset : presets) {
             Course course = existing.get(preset.title());
             if (course == null) {
+                course = takeOverFormer(existing, preset);
+            }
+            if (course == null) {
                 Course created = Course.preset(preset.title(), preset.summary(), preset.region(),
                         preset.totalMinutes(), preset.estimatedCost(), preset.displayOrder());
                 addStops(created, preset);
@@ -104,6 +107,20 @@ public class PresetCourseSeeder implements ApplicationRunner {
         courseRepository.saveAll(toInsert);
         log.info("프리셋 코스 동기화: 추가 {}개, 갱신 {}개, 변경 없음 {}개", inserted, updated, unchanged);
         return new SyncResult(inserted, updated, unchanged);
+    }
+
+    /** 예전 제목으로 저장된 코스가 있으면 새 제목으로 바꿔 이어받는다. */
+    private static Course takeOverFormer(Map<String, Course> existing, PresetCourse preset) {
+        for (String former : preset.formerTitles()) {
+            Course course = existing.remove(former);
+            if (course != null) {
+                course.renamePreset(preset.title());
+                existing.put(preset.title(), course);
+                log.info("프리셋 코스 제목 변경: '{}' → '{}'", former, preset.title());
+                return course;
+            }
+        }
+        return null;
     }
 
     /** 기존 코스를 JSON 기준으로 맞춘다. 바뀐 게 있으면 true. */
@@ -204,7 +221,12 @@ public class PresetCourseSeeder implements ApplicationRunner {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record PresetCourse(String title, String summary, String region, int totalMinutes, Integer estimatedCost,
-                        int displayOrder, List<PresetStop> stops, List<PresetMission> missions) {
+                        int displayOrder, List<PresetStop> stops, List<PresetMission> missions,
+                        List<String> formerTitles) {
+        /** 예전 제목 목록. 제목을 바꿀 때 기존 코스(id·저장 기록)를 이어받는 데 쓴다. */
+        PresetCourse {
+            formerTitles = formerTitles == null ? List.of() : List.copyOf(formerTitles);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
