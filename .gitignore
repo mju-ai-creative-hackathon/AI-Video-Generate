@@ -1,3 +1,4 @@
+### 영상 파이프라인 (vlog) ###
 .venv/
 __pycache__/
 *.pyc
@@ -12,3 +13,49 @@ storage/
 
 # 배경 음악 파일(라이선스별로 재배포가 안 될 수 있다)
 assets/music/
+
+### Backend (Spring) ###
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Local environment ###
+# 숏폼 업로드 저장소. data/ 전체를 빼면 파이프라인의 data/(템플릿 등)가 무시된다.
+data/shortforms/
+
+### Claude Code worktrees ###
+.claude/worktrees/

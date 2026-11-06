@@ -1,0 +1,67 @@
+# Proxmox VM 운영 구성. HTTPS는 앞단의 Nginx Proxy Manager(NPM)가 처리하고, 이 VM은 HTTP 8080만 연다.
+# 도메인 → 공유기 → NPM → pfSense → 이 VM:8080
+# 실행: cd deploy/vm && docker compose up -d --build   (값은 같은 폴더의 .env)
+name: hackathon-backend
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/vm/Dockerfile
+    image: hackathon-backend:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # NPM이 접근할 주소. APP_BIND에 이 VM의 IP를 적으면 그 인터페이스에만 연다.
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8080}:8080"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      REFRESH_TOKEN_EXPIRATION_SECONDS: ${REFRESH_TOKEN_EXPIRATION_SECONDS:-604800}
+      GOOGLE_SERVER_CLIENT_ID: ${GOOGLE_SERVER_CLIENT_ID:-}
+      SEED_PLACES_ENABLED: ${SEED_PLACES_ENABLED:-true}
+      SPRING_JPA_SHOW_SQL: "false"
+      # NPM의 X-Forwarded-Proto/Host를 믿어 서명 URL을 https://도메인으로 만든다.
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SHORTFORM_STORAGE_ROOT: /app/data/shortforms
+      SHORTFORM_AI_ENABLED: ${SHORTFORM_AI_ENABLED:-false}
+      SHORTFORM_AI_BASE_URL: ${SHORTFORM_AI_BASE_URL:-}
+      SHORTFORM_AI_API_KEY: ${SHORTFORM_AI_API_KEY:-}
+      SHORTFORM_SUBMIT_TIMEOUT_SECONDS: ${SHORTFORM_SUBMIT_TIMEOUT_SECONDS:-300}
+      SHORTFORM_DRAFT_TIMEOUT_SECONDS: ${SHORTFORM_DRAFT_TIMEOUT_SECONDS:-1800}
+      SHORTFORM_RENDER_TIMEOUT_SECONDS: ${SHORTFORM_RENDER_TIMEOUT_SECONDS:-7200}
+      SHORTFORM_MAX_FAILURES: ${SHORTFORM_MAX_FAILURES:-20}
+      SHORTFORM_DAILY_RENDER_LIMIT: ${SHORTFORM_DAILY_RENDER_LIMIT:-5}
+      SHORTFORM_MEDIA_URL_TTL_SECONDS: ${SHORTFORM_MEDIA_URL_TTL_SECONDS:-3600}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+      NAVER_MAP_APPNAME: ${NAVER_MAP_APPNAME:-com.mju.hackathon.moment}
+    # AI 서버(LLM PC)로 가는 SSH 터널이 VM의 172.17.0.1:18000에 열린다.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - shortform_media:/app/data
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # 포트를 열지 않는다. app 컨테이너만 접근한다.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  shortform_media:

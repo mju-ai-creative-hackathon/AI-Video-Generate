@@ -1,0 +1,434 @@
+package com.example.backend.course.recommend;
+
+import com.example.backend.auth.AuthService;
+import com.example.backend.auth.domain.UserRepository;
+import com.example.backend.auth.exception.AuthException;
+import com.example.backend.common.ApiException;
+import com.example.backend.course.CourseService;
+import com.example.backend.course.ai.gemini.AiCourseDraft;
+import com.example.backend.course.ai.gemini.AiMissionDraft;
+import com.example.backend.course.ai.gemini.AiStopDraft;
+import com.example.backend.course.ai.gemini.CourseGenerationException;
+import com.example.backend.course.ai.gemini.CourseGenerator;
+import com.example.backend.course.ai.gemini.CoursePlan;
+import com.example.backend.course.ai.kakao.ImageLookup;
+import com.example.backend.course.ai.kakao.KakaoPlace;
+import com.example.backend.course.ai.kakao.PlaceLookup;
+import com.example.backend.course.domain.Course;
+import com.example.backend.course.domain.CourseRepository;
+import com.example.backend.course.domain.CourseSource;
+import com.example.backend.course.domain.MissionKind;
+import com.example.backend.course.dto.CourseDetail;
+import com.example.backend.course.geo.GeoPoint;
+import com.example.backend.course.geo.GeoUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+/**
+ * 프롬프트 → Gemini 코스 초안 → 카카오로 좌표·사진 검증 → AI 코스 저장 → 상세 응답.
+ * Gemini 호출(수십 초) 동안 DB 트랜잭션을 잡지 않도록 저장만 TransactionTemplate 으로 감싼다.
+ */
+@Service
+public class CourseRecommendationService {
+    private static final Logger log = LoggerFactory.getLogger(CourseRecommendationService.class);
+    private static final int MAX_COURSES = 2;
+    private static final int COURSES_PER_REQUEST = 2;
+
+    private final AuthService authService;
+    private final CourseGenerator generator;
+    private final PlaceLookup placeLookup;
+    private final ImageLookup imageLookup;
+    private final CourseRepository courseRepository;
+    private final CourseService courseService;
+    private final TransactionTemplate tx;
+    private final int dailyRequestLimit;
+    private final ObjectMapper mapper;
+    private final UserRepository userRepository;
+
+    public CourseRecommendationService(AuthService authService, CourseGenerator generator, PlaceLookup placeLookup,
+                                       ImageLookup imageLookup, CourseRepository courseRepository,
+                                       CourseService courseService, TransactionTemplate tx, ObjectMapper mapper,
+                                       UserRepository userRepository,
+                                       @Value("${app.course.ai-daily-limit:${COURSE_AI_DAILY_LIMIT:20}}") int dailyRequestLimit) {
+        this.authService = authService;
+        this.generator = generator;
+        this.placeLookup = placeLookup;
+        this.imageLookup = imageLookup;
+        this.courseRepository = courseRepository;
+        this.courseService = courseService;
+        this.tx = tx;
+        this.dailyRequestLimit = dailyRequestLimit;
+        this.mapper = mapper;
+        this.userRepository = userRepository;
+    }
+
+    public record RecommendResponse(List<CourseDetail> courses) {
+    }
+
+    record ResolvedStop(AiStopDraft draft, KakaoPlace place, String imageUrl) {
+    }
+
+    public RecommendResponse recommend(String authorization, String prompt, Double lat, Double lng) {
+        UUID userId = authService.getCurrentUser(authorization).id();
+        GeoPoint user = userLocation(lat, lng);
+        String cleanPrompt = prompt.strip();
+
+        checkRateLimit(userId);
+
+        // 출발지("명지대 끝나고")가 있으면 그 좌표를 동선 시작점으로 쓴다. 출발지는 stops 에 넣지 않는다.
+        CoursePlan plan = generator.plan(cleanPrompt);
+        KakaoPlace originPlace = plan == null || plan.originQuery() == null ? null
+                : placeLookup.findBest(plan.originQuery(), user == null ? null : user.lat(), user == null ? null : user.lng())
+                        .orElse(null);
+        GeoPoint start = originPlace != null ? new GeoPoint(originPlace.lat(), originPlace.lng()) : user;
+
+        List<AiCourseDraft> drafts;
+        try {
+            drafts = generator.generate(cleanPrompt, start == null ? null : start.lat(), start == null ? null : start.lng(),
+                    plan, originPlace == null ? null : originPlace.name());
+        } catch (CourseGenerationException e) {
+            log.warn("AI 코스 생성 실패: {}", e.getMessage());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
+                    "AI 추천을 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
+
+        List<List<ResolvedStop>> resolved = resolveAll(drafts.stream().limit(MAX_COURSES).toList(), start);
+        if (originPlace != null) {
+            resolved.forEach(r -> r.removeIf(stop -> stop.place().id().equals(originPlace.id())));
+        }
+        // 장소가 3곳 이상 남은 코스가 하나라도 있으면 2곳짜리 코스는 버린다.
+        int minStops = resolved.stream().anyMatch(r -> r.size() >= 3) ? 3 : 2;
+
+        List<CourseDetail> result = tx.execute(status -> {
+            List<CourseDetail> details = new ArrayList<>();
+            for (int i = 0; i < resolved.size(); i++) {
+                List<ResolvedStop> stops = resolved.get(i);
+                if (stops.size() < minStops) {
+                    continue;
+                }
+                Course built = build(userId, cleanPrompt, drafts.get(i), stops);
+                if (originPlace != null) setOrigin(built, originPlace);
+                Course course = courseRepository.save(built);
+                details.add(courseService.toDetail(course, user, userId));
+            }
+            return details;
+        });
+
+        if (result == null || result.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "AI_NO_RESULT",
+                    "조건에 맞는 서울 코스를 찾지 못했어요. 요청을 조금 바꿔 다시 시도해 주세요.");
+        }
+        return new RecommendResponse(result);
+    }
+
+    /** 기존 코스(기본 코스 또는 본인 AI 코스)를 프롬프트로 고친 새 AI 코스를 만든다. 원본은 그대로 둔다. */
+    public CourseDetail refine(String authorization, Long courseId, String prompt, Double lat, Double lng) {
+        UUID userId = authService.getCurrentUser(authorization).id();
+        GeoPoint user = userLocation(lat, lng);
+        String cleanPrompt = prompt.strip();
+        checkRateLimit(userId);
+
+        record Base(String json, String originalPrompt, String originName, String originAddress,
+                    Double originLat, Double originLng) {
+        }
+        Base base = tx.execute(status -> {
+            Course course = courseRepository.findById(courseId)
+                    .filter(c -> c.isVisibleTo(userId))
+                    .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
+            return new Base(baseJson(course), course.getPrompt(), course.getOriginName(), course.getOriginAddress(),
+                    course.getOriginLat(), course.getOriginLng());
+        });
+
+        AiCourseDraft draft;
+        try {
+            boolean hasOrigin = base.originLat() != null && base.originLng() != null;
+            draft = generator.refine(base.json(), cleanPrompt,
+                    hasOrigin ? base.originLat() : user == null ? null : user.lat(),
+                    hasOrigin ? base.originLng() : user == null ? null : user.lng());
+        } catch (CourseGenerationException e) {
+            log.warn("AI 코스 수정 실패: {}", e.getMessage());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
+                    "코스를 고치지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
+        List<ResolvedStop> stops = resolveAll(List.of(draft), user).getFirst();
+        if (stops.size() < 2) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "AI_NO_RESULT",
+                    "요청대로 고친 코스를 찾지 못했어요. 표현을 바꿔 다시 시도해 주세요.");
+        }
+        String history = base.originalPrompt() == null ? cleanPrompt : base.originalPrompt() + " / 수정: " + cleanPrompt;
+        return tx.execute(status -> {
+            Course built = build(userId, history, draft, stops);
+            if (base.originName() != null && base.originLat() != null && base.originLng() != null) {
+                built.setOrigin(base.originName(), base.originAddress(), base.originLat(), base.originLng());
+            }
+            Course course = courseRepository.save(built);
+            return courseService.toDetail(course, user, userId);
+        });
+    }
+
+    /** 완료한 방문·미션은 서버에서 복사하고 이후 일정만 새로 만든다. 원본 코스는 변경하지 않는다. */
+    public CourseDetail refineRemaining(String authorization, Long courseId, String prompt,
+                                        int completedThroughStopSeq, Double lat, Double lng) {
+        UUID userId = authService.getCurrentUser(authorization).id();
+        GeoPoint user = userLocation(lat, lng);
+        if (prompt == null || prompt.isBlank() || prompt.length() > 500) {
+            throw ApiException.badRequest("수정 요청은 1~500자로 입력해 주세요.");
+        }
+        String cleanPrompt = prompt.strip();
+        record Base(String json, Course prefix) {}
+        Base base = tx.execute(status -> {
+            Course original = courseRepository.findById(courseId)
+                    .filter(c -> c.isVisibleTo(userId))
+                    .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
+            int count = original.getStops().size();
+            if (completedThroughStopSeq < 0 || completedThroughStopSeq >= count || completedThroughStopSeq >= 8
+                    || original.getStops().stream().filter(s -> s.getSeq() <= completedThroughStopSeq).count()
+                    != completedThroughStopSeq) {
+                throw ApiException.badRequest("완료한 마지막 장소의 순서를 선택해 주세요. 모두 완료한 코스는 수정할 수 없습니다.");
+            }
+            Course prefix = RemainingCourseBuilder.snapshot(original, userId, completedThroughStopSeq);
+            return new Base(baseJson(original), prefix);
+        });
+        checkRateLimit(userId);
+        GeoPoint anchor = user;
+        if (anchor == null && !base.prefix().getStops().isEmpty()) {
+            var last = base.prefix().getStops().getLast();
+            anchor = new GeoPoint(last.getLat(), last.getLng());
+        }
+        if (anchor == null && base.prefix().hasOrigin()) {
+            anchor = new GeoPoint(base.prefix().getOriginLat(), base.prefix().getOriginLng());
+        }
+        AiCourseDraft draft;
+        try {
+            draft = generator.refineRemaining(base.json(), cleanPrompt, completedThroughStopSeq,
+                    anchor == null ? null : anchor.lat(), anchor == null ? null : anchor.lng());
+        } catch (CourseGenerationException e) {
+            log.warn("남은 일정 수정 실패: {}", e.getMessage());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE",
+                    "남은 일정을 수정하지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
+        RemainingCourseBuilder.validateDraft(draft);
+        List<ResolvedStop> stops = resolveAll(List.of(draft), anchor).getFirst().stream()
+                .filter(stop -> !RemainingCourseBuilder.alreadyCompleted(base.prefix(), stop.place()))
+                .limit(8 - base.prefix().getStops().size()).toList();
+        if (stops.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "AI_NO_RESULT",
+                    "완료한 장소를 제외한 새 일정을 찾지 못했어요. 요청을 바꿔 다시 시도해 주세요.");
+        }
+        String latestRequest = completedThroughStopSeq + "번까지 완료 후 수정: " + cleanPrompt;
+        String history = base.prefix().getPrompt() == null ? latestRequest
+                : truncate(base.prefix().getPrompt(), 1000 - latestRequest.length() - 3) + " / " + latestRequest;
+        Course tail = build(userId, history, draft, stops);
+        Course combined = RemainingCourseBuilder.combine(base.prefix(), tail, userId, truncate(history, 1000));
+        return tx.execute(status -> {
+            // 외부 API를 기다리는 동안 탈퇴했거나 원본 접근 권한이 사라진 경우 저장하지 않는다.
+            userRepository.lockById(userId).orElseThrow(() ->
+                    new AuthException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+            authService.getCurrentUser(authorization);
+            checkRateLimit(userId);
+            courseRepository.findById(courseId).filter(c -> c.isVisibleTo(userId))
+                    .orElseThrow(() -> ApiException.notFound("코스를 찾을 수 없습니다."));
+            return courseService.toDetail(courseRepository.save(combined), user, userId);
+        });
+    }
+
+    private void checkRateLimit(UUID userId) {
+        long recent = courseRepository.countBySourceAndOwnerIdAndCreatedAtAfter(
+                CourseSource.AI, userId, Instant.now().minus(Duration.ofDays(1)));
+        if (recent >= (long) dailyRequestLimit * COURSES_PER_REQUEST) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED",
+                    "오늘 AI 추천 횟수를 모두 사용했어요. 내일 다시 시도해 주세요.");
+        }
+    }
+
+    private String baseJson(Course course) {
+        Map<String, Object> root = new java.util.LinkedHashMap<>();
+        root.put("title", course.getTitle());
+        root.put("summary", course.getSummary());
+        root.put("region", course.getRegion());
+        root.put("totalMinutes", course.getTotalMinutes());
+        root.put("estimatedCost", course.getEstimatedCost());
+        root.put("stops", course.getStops().stream().map(s -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("seq", s.getSeq());
+            m.put("day", s.getDay());
+            m.put("name", s.getName());
+            m.put("searchQuery", s.getName());
+            m.put("description", s.getDescription());
+            m.put("stayMinutes", s.getStayMinutes());
+            m.put("startTime", s.getStartTime() == null ? null : s.getStartTime().toString());
+            return m;
+        }).toList());
+        root.put("missions", course.getMissions().stream().map(mi -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("stopSeq", mi.getStopSeq());
+            m.put("kind", mi.getKind().name());
+            m.put("title", mi.getTitle());
+            m.put("guide", mi.getGuide());
+            m.put("durationSec", mi.getDurationSec());
+            return m;
+        }).toList());
+        return mapper.writeValueAsString(root);
+    }
+
+    /** 코스별·장소별 카카오 조회를 가상 스레드로 병렬 처리한다. 서울 밖이거나 못 찾은 장소는 버린다. */
+    private List<List<ResolvedStop>> resolveAll(List<AiCourseDraft> drafts, GeoPoint user) {
+        Double nearLat = user == null ? null : user.lat();
+        Double nearLng = user == null ? null : user.lng();
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<List<Future<Optional<ResolvedStop>>>> futures = new ArrayList<>();
+            for (AiCourseDraft draft : drafts) {
+                List<Future<Optional<ResolvedStop>>> perCourse = new ArrayList<>();
+                for (AiStopDraft stop : draft.stops()) {
+                    perCourse.add(pool.submit(() -> resolve(stop, nearLat, nearLng)));
+                }
+                futures.add(perCourse);
+            }
+            List<List<ResolvedStop>> out = new ArrayList<>();
+            for (List<Future<Optional<ResolvedStop>>> perCourse : futures) {
+                List<ResolvedStop> stops = new ArrayList<>();
+                Set<String> seenPlaces = new HashSet<>();
+                for (Future<Optional<ResolvedStop>> f : perCourse) {
+                    try {
+                        f.get().filter(r -> seenPlaces.add(r.place().id())).ifPresent(stops::add);
+                    } catch (Exception e) {
+                        log.warn("장소 확인 실패", e);
+                    }
+                }
+                out.add(stops);
+            }
+            return out;
+        }
+    }
+
+    private Optional<ResolvedStop> resolve(AiStopDraft stop, Double nearLat, Double nearLng) {
+        String query = stop.searchQuery() == null || stop.searchQuery().isBlank() ? stop.name() : stop.searchQuery();
+        Optional<KakaoPlace> place = placeLookup.findBest(query, nearLat, nearLng);
+        if (place.isEmpty() && !query.equals(stop.name())) {
+            place = placeLookup.findBest(stop.name(), nearLat, nearLng);
+        }
+        if (place.isEmpty()) {
+            // "광장시장 박가네빈대떡(본점)" 같은 긴 이름은 괄호·지점명을 떼고 한 번 더 찾는다.
+            String simple = stop.name().replaceAll("\\(.*?\\)", " ").replaceAll("\\s+(본점|[가-힣A-Za-z0-9]+점)$", "").strip();
+            if (!simple.isEmpty() && !simple.equals(stop.name()) && !simple.equals(query)) {
+                place = placeLookup.findBest(simple, nearLat, nearLng);
+            }
+        }
+        if (place.isPresent() && isExcluded(place.get())) {
+            log.info("제외 카테고리 장소: name={}, category={}", place.get().name(), place.get().categoryName());
+            return Optional.empty();
+        }
+        if (place.isEmpty()) {
+            log.info("카카오에서 찾지 못해 제외한 장소: name={}, query={}", stop.name(), query);
+        }
+        return place
+                .filter(p -> GeoUtils.isInSeoul(new GeoPoint(p.lat(), p.lng())))
+                .map(p -> new ResolvedStop(stop, p, imageLookup.findImageUrl(p.name()).orElse(null)));
+    }
+
+    private static void setOrigin(Course course, KakaoPlace p) {
+        String address = p.roadAddress() == null || p.roadAddress().isBlank() ? p.address() : p.roadAddress();
+        course.setOrigin(truncate(p.name(), 100), truncate(address, 255), p.lat(), p.lng());
+    }
+
+    private static final java.util.regex.Pattern PUBLIC_OFFICE = java.util.regex.Pattern.compile(
+            "공공기관|행정기관|주민센터|행정복지센터|구청|시청|경찰|파출소|지구대|소방|우체국|법원|검찰|세무서|등기소|병무청|출입국");
+
+    /** 관공서는 항상 제외, 편의점은 한강·공원 안 편의점만 허용한다. */
+    static boolean isExcluded(KakaoPlace p) {
+        String category = p.categoryName() == null ? "" : p.categoryName();
+        String name = p.name() == null ? "" : p.name();
+        if (PUBLIC_OFFICE.matcher(category).find() || PUBLIC_OFFICE.matcher(name).find()) {
+            return true;
+        }
+        if (category.contains("편의점")) {
+            return !(name.contains("한강") || name.contains("공원"));
+        }
+        return false;
+    }
+
+    private static Course build(UUID userId, String prompt, AiCourseDraft draft, List<ResolvedStop> stops) {
+        Course course = Course.ai(userId, truncate(prompt, 1000), truncate(draft.title(), 100),
+                truncate(draft.summary(), 500), truncate(draft.region(), 30),
+                Math.max(draft.totalMinutes(), 1), draft.estimatedCost());
+        Map<Integer, Integer> seqMap = new HashMap<>();
+        Map<Integer, String> nameBySeq = new HashMap<>();
+        int seq = 1;
+        for (ResolvedStop r : stops) {
+            KakaoPlace p = r.place();
+            String address = p.roadAddress() == null || p.roadAddress().isBlank() ? p.address() : p.roadAddress();
+            course.addStop(seq, r.draft().day(), truncate(p.name(), 100), truncate(r.draft().description(), 1000), truncate(address, 255),
+                    p.lat(), p.lng(), truncate(r.imageUrl(), 1000), truncate(p.id(), 50),
+                    parseTime(r.draft().startTime()), Math.max(r.draft().stayMinutes(), 1));
+            seqMap.put(r.draft().seq(), seq);
+            nameBySeq.put(seq, p.name());
+            seq++;
+        }
+        for (AiMissionDraft m : draft.missions()) {
+            Integer mapped = seqMap.get(m.stopSeq());
+            if (mapped == null) {
+                continue;
+            }
+            MissionKind kind;
+            try {
+                kind = MissionKind.valueOf(m.kind().toUpperCase(Locale.ROOT));
+            } catch (RuntimeException e) {
+                continue;
+            }
+            course.addMission(mapped, kind, truncate(m.title(), 100), truncate(m.guide(), 1000),
+                    kind == MissionKind.VIDEO ? m.durationSec() : null);
+        }
+        return course;
+    }
+
+    private static LocalTime parseTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalTime.parse(value.strip());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) {
+            return null;
+        }
+        String v = value.strip();
+        return v.length() <= max ? v : v.substring(0, max);
+    }
+
+    private static GeoPoint userLocation(Double lat, Double lng) {
+        if (lat == null && lng == null) {
+            return null;
+        }
+        if (lat == null || lng == null || lat.isNaN() || lng.isNaN() || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw ApiException.badRequest("lat과 lng는 함께, 올바른 값으로 전달해야 합니다.");
+        }
+        return new GeoPoint(lat, lng);
+    }
+}
