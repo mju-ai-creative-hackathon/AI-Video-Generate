@@ -131,6 +131,45 @@ public class CommunityService {
         return new ImportResult(imported.getId(), diary);
     }
 
+    /** 작성자만 수정할 수 있다. 다른 사람 게시물은 없는 것처럼 404. */
+    @Transactional
+    public PostView update(String authorization, UUID id, UpdateRequest request) {
+        UUID viewer = auth.getCurrentUser(authorization).id();
+        var post = posts.findLockedById(id).filter(p -> users.existsById(p.authorId))
+                .orElseThrow(() -> ApiException.notFound("게시물을 찾을 수 없습니다."));
+        if (!post.authorId.equals(viewer)) throw ApiException.notFound("게시물을 찾을 수 없습니다.");
+        boolean remove = Boolean.TRUE.equals(request.removeCourse());
+        if (remove && request.courseId() != null)
+            throw ApiException.badRequest("courseId와 removeCourse를 함께 보낼 수 없습니다.");
+        if (request.title() != null) {
+            rejectNul(request.title());
+            if (request.title().isBlank()) throw ApiException.badRequest("제목을 입력해주세요.");
+            post.title = request.title().strip();
+        }
+        if (request.caption() != null) {
+            rejectNul(request.caption());
+            post.caption = request.caption().strip();
+        }
+        if (request.tags() != null) {
+            var tags = new LinkedHashSet<String>();
+            request.tags().forEach(t -> tags.add(normalizeTag(t)));
+            post.tags.clear();
+            post.tags.addAll(tags);
+        }
+        if (request.courseId() != null) {
+            Course course = courses.findById(request.courseId())
+                    .filter(c -> c.isVisibleTo(viewer))
+                    .orElseThrow(() -> ApiException.notFound("연결할 코스를 찾을 수 없습니다."));
+            post.courseId = course.getId();
+            post.courseTitle = course.getTitle();
+        } else if (remove) {
+            post.courseId = null;
+            post.courseTitle = null;
+        }
+        posts.flush();
+        return view(post, users.findById(post.authorId).orElseThrow(() -> ApiException.notFound("작성자를 찾을 수 없습니다.")));
+    }
+
     @Transactional
     public void delete(String authorization, UUID id) {
         UUID viewer = auth.getCurrentUser(authorization).id();

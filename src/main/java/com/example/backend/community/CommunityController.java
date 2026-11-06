@@ -34,6 +34,11 @@ public class CommunityController {
         return ResponseEntity.created(URI.create("/api/community/posts/" + post.id())).body(post);
     }
     @GetMapping("/{id}") public PostView get(@PathVariable UUID id) { return service.get(id); }
+    @PatchMapping("/{id}") public PostView update(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable UUID id, @Valid @RequestBody UpdateRequest request) {
+        return service.update(authorization, id, request);
+    }
     @PostMapping("/{id}/import")
     public ResponseEntity<ImportResult> importCourse(
             @RequestHeader(value = "Authorization", required = false) String authorization,

@@ -152,6 +152,45 @@ class CommunityApiIntegrationTests extends PostgresIntegrationTest {
         assertThat(courses.findByOwnerId(otherId)).extracting(Course::getId).containsExactly(importedCourseId);
     }
 
+    @Test void authorCanUpdatePostAndLinkOrRemoveCourse() throws Exception {
+        Course preset = courses.saveAndFlush(Course.preset("공개 기본 코스", null, "서대문", 120, null, 1));
+        Course privateAi = courses.saveAndFlush(Course.ai(auth.getCurrentUser(other).id(), "비공개", "남의 AI 코스",
+                null, "서울", 60, null));
+        JsonNode post = create(owner, "원래 제목", "원래 내용", "원래");
+        String id = post.path("id").asText();
+
+        mvc.perform(patch(BASE + "/{id}", id).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":" + preset.getId() + "}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(patch(BASE + "/{id}", id).header("Authorization", other).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":" + preset.getId() + "}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(patch(BASE + "/{id}", id).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":" + privateAi.getId() + "}"))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(patch(BASE + "/{id}", id).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"바뀐 제목\",\"tags\":[\"#노을\",\"서대문\"],\"courseId\":"
+                                + preset.getId() + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("바뀐 제목"))
+                .andExpect(jsonPath("$.caption").value("원래 내용"))
+                .andExpect(jsonPath("$.tags.length()").value(2))
+                .andExpect(jsonPath("$.course.id").value(preset.getId()))
+                .andExpect(jsonPath("$.course.title").value("공개 기본 코스"));
+        mvc.perform(get(BASE + "/{id}", id))
+                .andExpect(jsonPath("$.course.id").value(preset.getId()))
+                .andExpect(jsonPath("$.title").value("바뀐 제목"));
+
+        mvc.perform(patch(BASE + "/{id}", id).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"removeCourse\":true,\"courseId\":" + preset.getId() + "}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(patch(BASE + "/{id}", id).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"removeCourse\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.course").doesNotExist());
+    }
+
     @Test void importRequiresAuthenticationAndLinkedCourse() throws Exception {
         JsonNode post = create(owner, "코스 없는 기록", "가져올 코스 없음");
         mvc.perform(post(BASE + "/{id}/import", post.path("id").asText()))
